@@ -1,0 +1,22 @@
+<Project>
+	<PropertyGroup>
+		<Product>Studio - AI Empower Labs Core</Product>
+		<Authors>Esben Carlsen</Authors>
+		<LangVersion>preview</LangVersion>
+		<Copyright>AI Empower Labs</Copyright>
+		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+		<CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
+		<OpenApiGenerateDocumentsOnBuild>false</OpenApiGenerateDocumentsOnBuild>
+		<GenerateDocumentationFile>false</GenerateDocumentationFile>
+		<NoDefaultExcludes>true</NoDefaultExcludes>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<IsPackable>false</IsPackable>
+		<RepositoryType>git</RepositoryType>
+		<EnableNETAnalyzers>true</EnableNETAnalyzers>
+		<NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
+		<TargetFramework>net9.0</TargetFramework>
+		<ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+		<RuntimeIdentifier>linux-x64</RuntimeIdentifier>
+	</PropertyGroup>
+</Project>
