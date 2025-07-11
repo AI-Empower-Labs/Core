@@ -15,7 +15,7 @@ public abstract class PeriodicExecutionAsyncBackgroundService(
 	{
 		if (startImmediately)
 		{
-			_logger.LogInformation("Executing immediately first time");
+			_logger.LogInformation("Service executing at startup");
 			await ExecutePeriodicServiceTask();
 		}
 
