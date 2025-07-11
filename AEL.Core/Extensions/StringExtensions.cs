@@ -57,7 +57,7 @@ public static class StringExtensions
     }
 
 #pragma warning disable CS0168 // Variable is declared but never used
-    public static T? SafeDeserialize<T>(this string json, ILogger? logger)
+    public static T? SafeDeserialize<T>(this string json, ILogger? logger = null)
     {
         try
         {
