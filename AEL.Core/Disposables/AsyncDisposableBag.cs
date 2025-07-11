@@ -110,7 +110,6 @@ public sealed class AsyncDisposableBag : IAsyncDisposable
 		}
 
 		await HandleDisposeTasks();
-
 		SuppressFinalize();
 	}
 
@@ -171,7 +170,6 @@ public sealed class AsyncDisposableBag : IAsyncDisposable
 	/// By calling SuppressFinalize, the finalization method for the object is not run automatically. This can improve
 	/// performance in certain scenarios where the object is no longer needed and the finalization code is not required.
 	/// @see <a href="https://docs.microsoft.com/en-us/dotnet/api/system.gc.suppressfinalize">SuppressFinalize Method (GC)</a>
-	/// /
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private void SuppressFinalize()
 	{

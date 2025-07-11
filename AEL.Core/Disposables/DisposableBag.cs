@@ -62,8 +62,7 @@ public sealed class DisposableBag : IDisposable
 		}
 
 		HandleDisposeTasks();
-
-		PreventObjectFinalization();
+		SuppressFinalize();
 	}
 
 	/// <summary>
@@ -104,11 +103,17 @@ public sealed class DisposableBag : IDisposable
 		}
 	}
 
-	/// <summary>
-	/// Removes the current object from the finalization queue, preventing it from being finalized.
-	/// </summary>
+	/// Prevents the finalization of an object.
+	/// This method is called to suppress the finalization of an object, preventing it from being scheduled for finalization
+	/// by the garbage collector. Once this method is called, the object will not be finalized unless the Finalize method
+	/// is explicitly called on it.
+	/// @remarks
+	/// This method is typically called by the Dispose method of an object that implements the IDisposable interface.
+	/// By calling SuppressFinalize, the finalization method for the object is not run automatically. This can improve
+	/// performance in certain scenarios where the object is no longer needed and the finalization code is not required.
+	/// @see <a href="https://docs.microsoft.com/en-us/dotnet/api/system.gc.suppressfinalize">SuppressFinalize Method (GC)</a>
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private void PreventObjectFinalization()
+	private void SuppressFinalize()
 	{
 		// Take yourself off the finalization queue
 		// to prevent finalization from executing a second time.

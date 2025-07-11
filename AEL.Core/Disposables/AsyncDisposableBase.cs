@@ -6,7 +6,7 @@ namespace System;
 
 public abstract class AsyncDisposableBase : IAsyncDisposable
 {
-	private AsyncDisposableBag? _disposableBuilder;
+	private AsyncDisposableBag? _disposableBag;
 	private Lazy<CancellationTokenSource>? _lazyCancellationTokenSource;
 	private long _disposeSignaled;
 
@@ -27,8 +27,8 @@ public abstract class AsyncDisposableBase : IAsyncDisposable
 	{
 		get
 		{
-			_disposableBuilder ??= new AsyncDisposableBag();
-			return _disposableBuilder;
+			_disposableBag ??= new AsyncDisposableBag();
+			return _disposableBag;
 		}
 	}
 
@@ -39,18 +39,17 @@ public abstract class AsyncDisposableBase : IAsyncDisposable
 			return;
 		}
 
-		await Cleanup();
-		await DisposeBuilder();
+		await DisposeBag();
 		CancelCancellationTokenSource();
 		SuppressFinalize();
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private async Task DisposeBuilder()
+	private async Task DisposeBag()
 	{
-		if (_disposableBuilder is not null)
+		if (_disposableBag is not null)
 		{
-			await _disposableBuilder.DisposeAsync();
+			await _disposableBag.DisposeAsync();
 		}
 	}
 
@@ -76,14 +75,5 @@ public abstract class AsyncDisposableBase : IAsyncDisposable
 		// Take yourself off the finalization queue
 		// to prevent finalization from executing a second time.
 		GC.SuppressFinalize(this);
-	}
-
-	/// <summary>
-	///     Do cleanup here
-	/// </summary>
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	protected virtual Task Cleanup()
-	{
-		return Task.CompletedTask;
 	}
 }

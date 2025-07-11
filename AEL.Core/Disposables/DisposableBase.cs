@@ -6,7 +6,7 @@ namespace System;
 
 public abstract class DisposableBase : IDisposable
 {
-	private DisposableBag? _disposableBuilder;
+	private DisposableBag? _disposableBag;
 	private Lazy<CancellationTokenSource>? _lazyCancellationTokenSource;
 
 	private long _disposeSignaled;
@@ -28,8 +28,8 @@ public abstract class DisposableBase : IDisposable
 	{
 		get
 		{
-			_disposableBuilder ??= new DisposableBag();
-			return _disposableBuilder;
+			_disposableBag ??= new DisposableBag();
+			return _disposableBag;
 		}
 	}
 
@@ -40,8 +40,7 @@ public abstract class DisposableBase : IDisposable
 			return;
 		}
 
-		Cleanup();
-		_disposableBuilder?.Dispose();
+		_disposableBag?.Dispose();
 		CancelCancellationTokenSource();
 		PreventObjectFinalization();
 	}
@@ -67,11 +66,4 @@ public abstract class DisposableBase : IDisposable
 		// Take yourself off the finalization queue
 		// to prevent finalization from executing a second time.
 		GC.SuppressFinalize(this);
-
-	/// <summary>
-	///     Do cleanup here
-	/// </summary>
-	protected virtual void Cleanup()
-	{
-	}
 }
