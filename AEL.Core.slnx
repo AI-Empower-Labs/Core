@@ -6,6 +6,7 @@
   </Configurations>
   <Folder Name="/Solution Items/">
     <File Path="Directory.Build.props" />
+    <File Path="README.md" />
   </Folder>
   <Project Path="AEL.Core.Tests\AEL.Core.Tests.csproj" Type="Classic C#">
     <Configuration Solution="Debug|x64" Project="Debug|Any CPU" />
