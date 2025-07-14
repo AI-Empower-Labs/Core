@@ -15,12 +15,6 @@ public static class HostApplicationBuilderExtensions
 	public static void AutomaticDependencyInjection<THostApplicationBuilder>(this THostApplicationBuilder builder, params Assembly[] assemblies)
 		where THostApplicationBuilder : IHostApplicationBuilder
 	{
-		builder.AutomaticDependencyInjection(new object(), assemblies);
-	}
-
-	public static void AutomaticDependencyInjection<THostApplicationBuilder, T>(this THostApplicationBuilder builder, T options, params Assembly[] assemblies)
-		where THostApplicationBuilder : IHostApplicationBuilder
-	{
 		foreach (Type type in TypeResolverHelper.GetClassTypes(assemblies))
 		{
 			if (type.IsBasedOn(typeof(ITransientService)))
@@ -43,16 +37,6 @@ public static class HostApplicationBuilderExtensions
 				MethodInfo? methodInfo = type.GetMethod(nameof(IDependencyInjectionRegistration<>.Register));
 				int count = builder.Services.Count;
 				methodInfo?.Invoke(null, [builder]);
-				Log.Logger.Debug("Registered {Count} types with {Type}",
-					builder.Services.Count - count,
-					type.FullName);
-			}
-
-			if (type.IsBasedOn(typeof(IDependencyInjectionRegistration<THostApplicationBuilder, T>)))
-			{
-				MethodInfo? methodInfo = type.GetMethod(nameof(IDependencyInjectionRegistration<,>.Register));
-				int count = builder.Services.Count;
-				methodInfo?.Invoke(null, [builder, options]);
 				Log.Logger.Debug("Registered {Count} types with {Type}",
 					builder.Services.Count - count,
 					type.FullName);
