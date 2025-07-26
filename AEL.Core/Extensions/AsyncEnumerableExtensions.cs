@@ -1,4 +1,6 @@
 using System.Threading.Channels;
+
+using AEL.Core.Extensions;
 // ReSharper disable once CheckNamespace
 using System.Runtime.CompilerServices;
 
@@ -13,6 +15,35 @@ public static class AsyncEnumerableExtensions
 			if (t is not null)
 			{
 				yield return t;
+			}
+		}
+	}
+
+	public static async IAsyncEnumerable<ICollection<T>> Batch<T>(this IAsyncEnumerable<T> enumerable,
+		int batchSize,
+		[EnumeratorCancellation] CancellationToken cancellationToken = default)
+	{
+		Channel<T> channel = Channel.CreateBounded<T>(batchSize);
+		Task producerTask = Producer();
+		await foreach (ICollection<T> collection in channel.ReadAllBatchAggressive(batchSize, cancellationToken))
+		{
+			yield return collection;
+		}
+
+		await producerTask;
+
+		async Task Producer()
+		{
+			try
+			{
+				await foreach (T t in enumerable.WithCancellation(cancellationToken))
+				{
+					await channel.Writer.WriteAsync(t, cancellationToken);
+				}
+			}
+			finally
+			{
+				channel.Writer.Complete();
 			}
 		}
 	}
