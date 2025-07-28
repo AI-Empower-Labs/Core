@@ -41,9 +41,17 @@ public static class AsyncEnumerableExtensions
 					await channel.Writer.WriteAsync(t, cancellationToken);
 				}
 			}
+			catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+			{
+				// Ignore
+			}
+			catch (Exception ex)
+			{
+				channel.Writer.Complete(ex);
+			}
 			finally
 			{
-				channel.Writer.Complete();
+				channel.Writer.TryComplete();
 			}
 		}
 	}
@@ -103,9 +111,17 @@ public static class AsyncEnumerableExtensions
 
 				await Task.WhenAll(tasks);
 			}
+			catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+			{
+				// Ignore
+			}
+			catch (Exception ex)
+			{
+				channel.Writer.Complete(ex);
+			}
 			finally
 			{
-				channel.Writer.Complete();
+				channel.Writer.TryComplete();
 			}
 		}
 	}
