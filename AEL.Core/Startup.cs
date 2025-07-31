@@ -19,6 +19,7 @@ public sealed class Startup : DisposableBase
 			.Enrich.FromLogContext()
 			.Enrich.WithExceptionDetails()
 			.WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level}] {SourceContext}{NewLine}{Message:lj}{NewLine}{Exception}{NewLine}", theme: AnsiConsoleTheme.Code)
+			.WriteTo.OpenTelemetry(_ => {})
 			.CreateBootstrapLogger();
 
 		AppDomain.CurrentDomain.SetData("REGEX_DEFAULT_MATCH_TIMEOUT", TimeSpan.FromSeconds(1.0));
