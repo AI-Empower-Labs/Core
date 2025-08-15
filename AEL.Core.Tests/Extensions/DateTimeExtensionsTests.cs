@@ -1,7 +1,4 @@
-namespace AEL.Core.Tests;
-
-using System;
-using Xunit;
+namespace AEL.Core.Tests.Extensions;
 
 public class DateTimeExtensionsTests
 {
@@ -19,7 +16,7 @@ public class DateTimeExtensionsTests
     [Fact]
     public void Truncate_RemovesSubSecondPrecision()
     {
-        DateTimeOffset dt = new DateTimeOffset(2023, 1, 1, 10, 20, 30, 500, TimeSpan.Zero);
+        DateTimeOffset dt = new(2023, 1, 1, 10, 20, 30, 500, TimeSpan.Zero);
         DateTimeOffset truncated = dt.Truncate(TimeSpan.FromSeconds(1));
         Assert.Equal(new DateTimeOffset(2023, 1, 1, 10, 20, 30, 0, TimeSpan.Zero), truncated);
     }
@@ -29,7 +26,7 @@ public class DateTimeExtensionsTests
     [InlineData(DateTimeResolutionExtensions.DateTimeResolution.Minute)]
     public void Floor_FloorsToResolution(DateTimeResolutionExtensions.DateTimeResolution res)
     {
-        DateTimeOffset dt = new DateTimeOffset(2023, 1, 1, 12, 34, 56, 789, TimeSpan.Zero);
+        DateTimeOffset dt = new(2023, 1, 1, 12, 34, 56, 789, TimeSpan.Zero);
         DateTimeOffset floored = dt.Floor(res);
         Assert.True(floored <= dt);
         switch (res)

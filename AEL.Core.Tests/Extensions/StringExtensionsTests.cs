@@ -1,7 +1,4 @@
-namespace AEL.Core.Tests;
-
-using System;
-using Xunit;
+namespace AEL.Core.Tests.Extensions;
 
 public class StringExtensionsTests
 {
