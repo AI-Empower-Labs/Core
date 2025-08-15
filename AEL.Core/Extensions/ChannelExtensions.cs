@@ -74,21 +74,12 @@ public static class ChannelExtensions
 		int maxBatchSize = 10,
 		[EnumeratorCancellation] CancellationToken cancellationToken = default)
 	{
+		List<T> batch = new(maxBatchSize);
 		while (await channel.Reader
 			.WaitToReadAsync(cancellationToken)
 			.WithSilentCancellation(cancellationToken))
 		{
-			foreach (ICollection<T> batch in MakeBatches())
-			{
-				yield return batch;
-			}
-		}
-
-		yield break;
-
-		IEnumerable<ICollection<T>> MakeBatches()
-		{
-			List<T> batch = new(maxBatchSize);
+			batch.Clear();
 			while (channel.Reader.TryRead(out T? item))
 			{
 				batch.Add(item);
@@ -103,6 +94,22 @@ public static class ChannelExtensions
 			{
 				yield return batch;
 			}
+		}
+
+		batch.Clear();
+		while (channel.Reader.TryRead(out T? item))
+		{
+			batch.Add(item);
+			if (batch.Count >= maxBatchSize)
+			{
+				yield return batch;
+				batch.Clear();
+			}
+		}
+
+		if (batch.Count > 0)
+		{
+			yield return batch;
 		}
 	}
 }
