@@ -28,7 +28,7 @@ public class EnumerableExtensionsTests
         }
 
         IAsyncEnumerable<string> filtered = GetItems().WhereNotNull();
-        List<string> list = new List<string>();
+        List<string> list = [];
         await foreach (string s in filtered)
         {
             list.Add(s);
