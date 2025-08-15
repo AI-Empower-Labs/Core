@@ -15,7 +15,7 @@ A comprehensive .NET Core library providing essential utilities, extensions, and
 
 ## Installation
 
-Add as a submdoule and add reference to project
+Add as a submodule and add reference to project
 
 ```
 git submodule add https://github.com/AI-Empower-Labs/Core
