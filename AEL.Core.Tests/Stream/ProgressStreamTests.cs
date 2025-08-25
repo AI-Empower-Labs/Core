@@ -2,21 +2,11 @@ namespace AEL.Core.Tests.Stream;
 
 public sealed class ProgressStreamTests
 {
-	#pragma warning disable CA1852
-	private class UnitTestProgress<T>(Action<T> handler) : IProgress<T>
-	{
-		public void Report(T value)
-		{
-			handler(value);
-		}
-	}
-
 	[Fact]
 	public async Task Properties()
 	{
 		System.IO.Stream inputStream = new MemoryStream(new byte[10]);
-
-		await using ProgressStream stream = new(inputStream);
+		await using ProgressStream stream = new(inputStream, null, null);
 
 		Assert.Equal(inputStream.CanRead, stream.CanRead);
 		Assert.Equal(inputStream.CanSeek, stream.CanSeek);
@@ -40,13 +30,13 @@ public sealed class ProgressStreamTests
 		System.IO.Stream inputStream = new MemoryStream();
 
 		int bytesReadOverall = 0;
-		UnitTestProgress<int> writeProgress = new(bytesRead =>
+		void WriteProgress(int bytesRead)
 		{
 			bytesReadOverall += bytesRead;
-		});
+		}
 
 		await using MemoryStream stream = new(new byte[1_000_000]);
-		await using ProgressStream outputStream = new(inputStream, writeProgress: writeProgress);
+		await using ProgressStream outputStream = new(inputStream, null, writeProgress: WriteProgress);
 
 		while (true)
 		{
@@ -70,7 +60,7 @@ public sealed class ProgressStreamTests
 	{
 		System.IO.Stream inputStream = new MemoryStream(new byte[10]);
 
-		await using ProgressStream stream = new(inputStream);
+		await using ProgressStream stream = new(inputStream, null, null);
 
 		stream.Seek(5, SeekOrigin.Begin);
 
@@ -83,7 +73,7 @@ public sealed class ProgressStreamTests
 	{
 		System.IO.Stream inputStream = new MemoryStream(new byte[10]);
 
-		await using ProgressStream stream = new(inputStream);
+		await using ProgressStream stream = new(inputStream, null, null);
 
 		stream.SetLength(5);
 
@@ -99,12 +89,12 @@ public sealed class ProgressStreamTests
 		System.IO.Stream inputStream = new MemoryStream(new byte[1_000_000]);
 
 		int bytesReadOverall = 0;
-		UnitTestProgress<int> readProgress = new(bytesRead =>
+		void WriteProgress(int bytesRead)
 		{
-			bytesReadOverall += bytesRead;
-		});
+			bytesReadOverall = bytesRead;
+		}
 
-		await using ProgressStream stream = new(inputStream, readProgress);
+		await using ProgressStream stream = new(inputStream, WriteProgress, null);
 		await using MemoryStream outputStream = new();
 
 		while (true)
@@ -130,12 +120,12 @@ public sealed class ProgressStreamTests
 		System.IO.Stream inputStream = new MemoryStream(new byte[1_000_000]);
 
 		int bytesReadOverall = 0;
-		UnitTestProgress<int> readProgress = new(bytesRead =>
+		void WriteProgress(int bytesRead)
 		{
-			bytesReadOverall += bytesRead;
-		});
+			bytesReadOverall = bytesRead;
+		}
 
-		await using ProgressStream stream = new(inputStream, readProgress);
+		await using ProgressStream stream = new(inputStream, WriteProgress, null);
 		await using MemoryStream outputStream = new();
 
 		while (true)
@@ -161,13 +151,13 @@ public sealed class ProgressStreamTests
 		System.IO.Stream inputStream = new MemoryStream();
 
 		int bytesReadOverall = 0;
-		UnitTestProgress<int> writeProgress = new(bytesRead =>
+		void WriteProgress(int bytesRead)
 		{
 			bytesReadOverall += bytesRead;
-		});
+		}
 
 		await using MemoryStream stream = new(new byte[1_000_000]);
-		await using ProgressStream outputStream = new(inputStream, writeProgress: writeProgress);
+		await using ProgressStream outputStream = new(inputStream, null, WriteProgress);
 
 		while (true)
 		{
@@ -192,13 +182,13 @@ public sealed class ProgressStreamTests
 		System.IO.Stream inputStream = new MemoryStream();
 
 		int bytesReadOverall = 0;
-		UnitTestProgress<int> writeProgress = new(bytesRead =>
+		void WriteProgress(int bytesRead)
 		{
 			bytesReadOverall += bytesRead;
-		});
+		}
 
 		await using MemoryStream stream = new(new byte[1_000_000]);
-		await using ProgressStream outputStream = new(inputStream, writeProgress: writeProgress);
+		await using ProgressStream outputStream = new(inputStream, null, WriteProgress);
 
 		while (true)
 		{
