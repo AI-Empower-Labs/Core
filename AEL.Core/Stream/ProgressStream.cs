@@ -4,13 +4,28 @@ namespace System.IO;
 
 public sealed class ProgressStream(
 	Stream stream,
-	IProgress<int>? readProgress = null,
-	IProgress<int>? writeProgress = null) : Stream
+	Action<int>? readProgress,
+	Action<int>? writeProgress) : Stream
 {
+	private int _totalReadBytes;
+	private int _totalWriteBytes;
+
 	/// <inheritdoc />
 	public override void Flush()
 	{
 		stream.Flush();
+	}
+
+	private void UpdateReadBytes(int change)
+	{
+		_totalReadBytes += change;
+		readProgress?.Invoke(_totalReadBytes);
+	}
+
+	private void UpdateWriteBytes(int change)
+	{
+		_totalWriteBytes += change;
+		writeProgress?.Invoke(_totalWriteBytes);
 	}
 
 	/// <inheritdoc />
@@ -32,7 +47,7 @@ public sealed class ProgressStream(
 			totalBytesRead += bytesRead;
 		}
 
-		readProgress?.Report(totalBytesRead);
+		UpdateReadBytes(totalBytesRead);
 
 		return totalBytesRead;
 	}
@@ -61,7 +76,7 @@ public sealed class ProgressStream(
 			totalBytesRead += bytesRead;
 		}
 
-		readProgress?.Report(totalBytesRead);
+		UpdateReadBytes(totalBytesRead);
 
 		return totalBytesRead;
 	}
@@ -82,9 +97,8 @@ public sealed class ProgressStream(
 	public override void Write(byte[] buffer, int offset, int count)
 	{
 		ValidateBufferArgs(buffer, offset, count);
-
 		stream.Write(buffer, offset, count);
-		writeProgress?.Report(count);
+		UpdateWriteBytes(count);
 	}
 
 	/// <inheritdoc />
@@ -97,7 +111,7 @@ public sealed class ProgressStream(
 #else
             await stream.WriteAsync(buffer, offset, count, cancellationToken);
 #endif
-		writeProgress?.Report(count);
+		UpdateWriteBytes(count);
 	}
 
 	/// <inheritdoc />
