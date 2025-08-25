@@ -2,7 +2,10 @@
 
 namespace System.IO;
 
-public sealed class ProgressStream(Stream stream, IProgress<int>? readProgress = null, IProgress<int>? writeProgress = null) : Stream
+public sealed class ProgressStream(
+	Stream stream,
+	IProgress<int>? readProgress = null,
+	IProgress<int>? writeProgress = null) : Stream
 {
 	/// <inheritdoc />
 	public override void Flush()

@@ -19,10 +19,10 @@ public class ValueTaskExtensionsTests
 	public async Task WithSilentException_ValueTask_SwallowsException()
 	{
 		ValueTask task = new(Task.FromException(new InvalidOperationException()));
-		await task.WithSilentException();
+		await task.WithSilentException(cancellationToken: TestContext.Current.CancellationToken);
 
 		ValueTask<int> vt = new(Task.FromException<int>(new InvalidOperationException()));
-		int r = await vt.WithSilentException(5);
+		int r = await vt.WithSilentException(5, cancellationToken: TestContext.Current.CancellationToken);
 		Assert.Equal(5, r);
 	}
 }

@@ -6,7 +6,7 @@ public class AsyncEnumerableExtensionsTests
 	public async Task Batch_SplitsIntoBatches()
 	{
 		List<ICollection<int>> batches = [];
-		await foreach (ICollection<int> batch in Enumerable.Range(0, 5).ToAsyncEnumerable().Batch(2))
+		await foreach (ICollection<int> batch in Enumerable.Range(0, 5).ToAsyncEnumerable().Batch(2, cancellationToken: TestContext.Current.CancellationToken))
 		{
 			batches.Add(batch.ToArray());
 		}
@@ -23,7 +23,7 @@ public class AsyncEnumerableExtensionsTests
 		IEnumerable<int> source = Enumerable.Range(0, 10).ToArray();
 
 		List<int> results = [];
-		await foreach (int r in source.ForeachParallel(Work, maxDegreeOfParallelism: 3))
+		await foreach (int r in source.ForeachParallel(Work, maxDegreeOfParallelism: 3, cancellationToken: TestContext.Current.CancellationToken))
 		{
 			results.Add(r);
 		}

@@ -10,12 +10,12 @@ public class ChannelExtensionsTests
 	public async Task ReadAllDrain_YieldsAllItems_EvenAfterComplete()
 	{
 		Channel<int> ch = Channel.CreateUnbounded<int>();
-		await ch.Writer.WriteAsync(1);
-		await ch.Writer.WriteAsync(2);
+		await ch.Writer.WriteAsync(1, TestContext.Current.CancellationToken);
+		await ch.Writer.WriteAsync(2, TestContext.Current.CancellationToken);
 		ch.Writer.TryComplete();
 
 		List<int> results = [];
-		await foreach (int i in ch.ReadAllDrain())
+		await foreach (int i in ch.ReadAllDrain(cancellationToken: TestContext.Current.CancellationToken))
 		{
 			results.Add(i);
 		}
@@ -27,11 +27,11 @@ public class ChannelExtensionsTests
 	public async Task ReadAllDrainBatch_RespectsMaxBatchSize_AndDrains()
 	{
 		Channel<int> ch = Channel.CreateUnbounded<int>();
-		for (int i = 0; i < 7; i++) await ch.Writer.WriteAsync(i);
+		for (int i = 0; i < 7; i++) await ch.Writer.WriteAsync(i, TestContext.Current.CancellationToken);
 		ch.Writer.TryComplete();
 
 		List<ICollection<int>> batches = [];
-		await foreach (ICollection<int> b in ch.ReadAllDrainBatch(3))
+		await foreach (ICollection<int> b in ch.ReadAllDrainBatch(3, cancellationToken: TestContext.Current.CancellationToken))
 		{
 			batches.Add(b.ToArray());
 		}
