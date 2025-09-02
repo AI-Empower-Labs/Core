@@ -61,13 +61,9 @@ public sealed class ProgressStream(
 
 		while (totalBytesRead < count)
 		{
-#if NET || NETSTANDARD2_1
 			int bytesRead = await stream.ReadAsync(
 				buffer.AsMemory(offset + totalBytesRead, count - totalBytesRead),
 				cancellationToken);
-#else
-                int bytesRead = await stream.ReadAsync(buffer, offset + totalBytesRead, count - totalBytesRead, cancellationToken);
-#endif
 			if (bytesRead == 0)
 			{
 				break; // end of stream
@@ -105,12 +101,7 @@ public sealed class ProgressStream(
 	public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
 	{
 		ValidateBufferArgs(buffer, offset, count);
-
-#if NET || NETSTANDARD2_1
 		await stream.WriteAsync(buffer.AsMemory(offset, count), cancellationToken);
-#else
-            await stream.WriteAsync(buffer, offset, count, cancellationToken);
-#endif
 		UpdateWriteBytes(count);
 	}
 
@@ -155,15 +146,7 @@ public sealed class ProgressStream(
 	/// <exception cref="ArgumentException">Thrown if the sum of <paramref name="offset"/> and <paramref name="count"/> are invalid.</exception>
 	private static void ValidateBufferArgs(byte[] buffer, int offset, int count)
 	{
-#if NET
 		ArgumentNullException.ThrowIfNull(buffer);
-#else
-            if (buffer == null)
-            {
-                throw new ArgumentNullException(nameof(buffer));
-            }
-#endif
-
 		if (offset < 0)
 		{
 			throw new ArgumentOutOfRangeException(nameof(offset), "Offset cannot be negative.");
