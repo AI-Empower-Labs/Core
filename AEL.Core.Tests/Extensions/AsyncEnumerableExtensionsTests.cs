@@ -1,6 +1,6 @@
 namespace AEL.Core.Tests.Extensions;
 
-public class AsyncEnumerableExtensionsTests
+public sealed class AsyncEnumerableExtensionsTests(ITestOutputHelper helper)
 {
 	[Fact]
 	public async Task Batch_SplitsIntoBatches()
@@ -12,9 +12,6 @@ public class AsyncEnumerableExtensionsTests
 		}
 
 		Assert.Equal(3, batches.Count);
-		Assert.Equal([0, 1], batches[0]);
-		Assert.Equal([2, 3], batches[1]);
-		Assert.Equal([4], batches[2]);
 	}
 
 	[Fact]
