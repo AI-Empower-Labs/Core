@@ -146,7 +146,7 @@ public sealed class AsyncBatchProcessor<TIn, TOut> : AsyncBackgroundService
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
 		await foreach (ICollection<(TIn Value, TaskCompletionSource<TOut> TaskCompletionSource)> batch in
-			_channel.ReadAllBatchAggressive(_batchSize, stoppingToken))
+			_channel.ReadAllBatch(_batchSize, stoppingToken))
 		{
 			// If channel completed with an error, fault all pending items without invoking the func
 			if (_channel.Reader.Completion.IsFaulted)

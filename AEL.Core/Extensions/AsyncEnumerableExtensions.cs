@@ -25,7 +25,7 @@ public static class AsyncEnumerableExtensions
 	{
 		Channel<T> channel = Channel.CreateBounded<T>(batchSize);
 		Task producerTask = Producer();
-		await foreach (ICollection<T> collection in channel.ReadAllBatchAggressive(batchSize, cancellationToken))
+		await foreach (ICollection<T> collection in channel.ReadAllBatch(batchSize, cancellationToken))
 		{
 			yield return collection;
 		}
@@ -47,7 +47,44 @@ public static class AsyncEnumerableExtensions
 			}
 			catch (Exception ex)
 			{
-				channel.Writer.Complete(ex);
+				channel.Writer.TryComplete(ex);
+			}
+			finally
+			{
+				channel.Writer.TryComplete();
+			}
+		}
+	}
+
+	public static async IAsyncEnumerable<ICollection<T>> BatchWithDrain<T>(this IAsyncEnumerable<T> enumerable,
+		int batchSize,
+		[EnumeratorCancellation] CancellationToken cancellationToken = default)
+	{
+		Channel<T> channel = Channel.CreateBounded<T>(batchSize);
+		Task producerTask = Producer();
+		await foreach (ICollection<T> collection in channel.ReadAllBatchDrain(batchSize, cancellationToken))
+		{
+			yield return collection;
+		}
+
+		await producerTask;
+
+		async Task Producer()
+		{
+			try
+			{
+				await foreach (T t in enumerable.WithCancellation(cancellationToken))
+				{
+					await channel.Writer.WriteAsync(t, cancellationToken);
+				}
+			}
+			catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+			{
+				// Ignore
+			}
+			catch (Exception ex)
+			{
+				channel.Writer.TryComplete(ex);
 			}
 			finally
 			{

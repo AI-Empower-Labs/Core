@@ -26,11 +26,16 @@ public static class ChannelExtensions
 		}
 	}
 
-	public static async IAsyncEnumerable<ICollection<T>> ReadAllDrainBatch<T>(
+	public static async IAsyncEnumerable<ICollection<T>> ReadAllBatchDrain<T>(
 		this Channel<T> channel,
 		int maxBatchSize = 10,
 		[EnumeratorCancellation] CancellationToken cancellationToken = default)
 	{
+		if (maxBatchSize <= 0)
+		{
+			throw new ArgumentOutOfRangeException(nameof(maxBatchSize), "maxBatchSize must be greater than 0.");
+		}
+
 		while (await channel.Reader
 			.WaitToReadAsync(cancellationToken)
 			.WithSilentCancellation(cancellationToken))
@@ -69,15 +74,18 @@ public static class ChannelExtensions
 		}
 	}
 
-	public static async IAsyncEnumerable<ICollection<T>> ReadAllBatchAggressive<T>(
+	public static async IAsyncEnumerable<ICollection<T>> ReadAllBatch<T>(
 		this Channel<T> channel,
 		int maxBatchSize = 10,
 		[EnumeratorCancellation] CancellationToken cancellationToken = default)
 	{
+		if (maxBatchSize <= 0)
+		{
+			throw new ArgumentOutOfRangeException(nameof(maxBatchSize), "maxBatchSize must be greater than 0.");
+		}
+
 		List<T> batch = new(maxBatchSize);
-		while (await channel.Reader
-			.WaitToReadAsync(cancellationToken)
-			.WithSilentCancellation(cancellationToken))
+		while (await channel.Reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
 		{
 			batch.Clear();
 			while (channel.Reader.TryRead(out T? item))
@@ -94,22 +102,6 @@ public static class ChannelExtensions
 			{
 				yield return batch;
 			}
-		}
-
-		batch.Clear();
-		while (channel.Reader.TryRead(out T? item))
-		{
-			batch.Add(item);
-			if (batch.Count >= maxBatchSize)
-			{
-				yield return batch;
-				batch.Clear();
-			}
-		}
-
-		if (batch.Count > 0)
-		{
-			yield return batch;
 		}
 	}
 }

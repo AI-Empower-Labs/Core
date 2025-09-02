@@ -31,7 +31,7 @@ public class ChannelExtensionsTests
 		ch.Writer.TryComplete();
 
 		List<ICollection<int>> batches = [];
-		await foreach (ICollection<int> b in ch.ReadAllDrainBatch(3, cancellationToken: TestContext.Current.CancellationToken))
+		await foreach (ICollection<int> b in ch.ReadAllBatchDrain(3, cancellationToken: TestContext.Current.CancellationToken))
 		{
 			batches.Add(b.ToArray());
 		}
@@ -43,7 +43,7 @@ public class ChannelExtensionsTests
 	}
 
 	[Fact]
-	public async Task ReadAllBatchAggressive_EmitsWhileDataAvailable()
+	public async Task ReadAllBatch_EmitsWhileDataAvailable()
 	{
 		Channel<int> ch = Channel.CreateUnbounded<int>();
 		CancellationTokenSource cts = new();
@@ -60,7 +60,7 @@ public class ChannelExtensionsTests
 		}, cts.Token);
 
 		List<int> results = [];
-		await foreach (ICollection<int> batch in ch.ReadAllBatchAggressive(2, cts.Token))
+		await foreach (ICollection<int> batch in ch.ReadAllBatch(2, cts.Token))
 		{
 			results.AddRange(batch);
 		}
