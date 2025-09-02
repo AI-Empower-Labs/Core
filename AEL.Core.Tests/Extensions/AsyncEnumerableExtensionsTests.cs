@@ -1,6 +1,6 @@
 namespace AEL.Core.Tests.Extensions;
 
-public sealed class AsyncEnumerableExtensionsTests(ITestOutputHelper helper)
+public sealed class AsyncEnumerableExtensionsTests
 {
 	[Fact]
 	public async Task Batch_SplitsIntoBatches()
