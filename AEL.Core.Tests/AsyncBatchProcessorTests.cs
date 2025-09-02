@@ -6,6 +6,28 @@ namespace AEL.Core.Tests;
 
 public sealed class AsyncBatchProcessorTests
 {
+	private sealed class TestAsyncBatchProcessor<TIn, TOut> : AsyncBatchProcessor<TIn, TOut>
+	{
+		private readonly Func<IEnumerable<TIn>, CancellationToken, Task<TOut[]>> _func;
+
+		public TestAsyncBatchProcessor(
+			int batchSize,
+			Func<IEnumerable<TIn>, CancellationToken, Task<TOut[]>> func,
+			ILogger logger,
+			int? capacity,
+			BoundedChannelFullMode fullMode)
+			: base(batchSize, logger, capacity, fullMode)
+		{
+			_func = func ?? throw new ArgumentNullException(nameof(func));
+		}
+
+		protected override ValueTask<TOut[]> ExecuteBatchProcess(ICollection<TIn> inputs, CancellationToken cancellationToken)
+			=> new(_func(inputs, cancellationToken));
+
+		public new Task<TOut> Process(TIn value, CancellationToken cancellationToken = default)
+			=> base.Process(value, cancellationToken);
+	}
+
 	private sealed class TestLogger : ILogger
 	{
 		public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
@@ -30,7 +52,7 @@ public sealed class AsyncBatchProcessorTests
 			return Task.FromResult(arr.Select(i => i * 2).ToArray());
 		}
 
-		await using AsyncBatchProcessor<int, int> proc = new(
+		await using TestAsyncBatchProcessor<int, int> proc = new(
 			batchSize: 3,
 			func: Func,
 			logger: logger,
@@ -72,7 +94,7 @@ public sealed class AsyncBatchProcessorTests
 			return Task.FromResult(arr.Select(x => x).ToArray());
 		}
 
-		await using AsyncBatchProcessor<int, int> proc = new(
+		await using TestAsyncBatchProcessor<int, int> proc = new(
 			batchSize: 10,
 			func: Func,
 			logger: logger,
@@ -114,7 +136,7 @@ public sealed class AsyncBatchProcessorTests
 			return Task.FromResult(Array.Empty<int>());
 		}
 
-		await using AsyncBatchProcessor<int, int> proc = new(
+		await using TestAsyncBatchProcessor<int, int> proc = new(
 			batchSize: 5,
 			func: Func,
 			logger: logger,
@@ -151,7 +173,7 @@ public sealed class AsyncBatchProcessorTests
 			});
 		}
 
-		await using AsyncBatchProcessor<int, int> proc = new(
+		await using TestAsyncBatchProcessor<int, int> proc = new(
 			batchSize: 2,
 			func: Func,
 			logger: logger,
