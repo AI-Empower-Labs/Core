@@ -34,7 +34,7 @@ public sealed class AsyncBatchProcessor<TIn, TOut> : AsyncBackgroundService
 		int batchSize,
 		Func<IEnumerable<TIn>, CancellationToken, Task<TOut[]>> func,
 		ILogger logger,
-		int? capacity,
+		int? capacity = null,
 		BoundedChannelFullMode fullMode = BoundedChannelFullMode.Wait) : base(logger)
 	{
 		ArgumentOutOfRangeException.ThrowIfLessThan(batchSize, 1);
