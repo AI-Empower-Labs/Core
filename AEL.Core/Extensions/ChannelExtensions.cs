@@ -42,14 +42,14 @@ public static class ChannelExtensions
 		{
 			foreach (ICollection<T> batch in MakeBatches())
 			{
-				yield return batch;
+				yield return batch.ToArray();
 			}
 		}
 
 		// Empty queue
 		foreach (ICollection<T> batch in MakeBatches())
 		{
-			yield return batch;
+			yield return batch.ToArray();
 		}
 
 		yield break;
@@ -62,14 +62,14 @@ public static class ChannelExtensions
 				batch.Add(item);
 				if (batch.Count >= maxBatchSize)
 				{
-					yield return batch;
+					yield return batch.ToArray();
 					batch.Clear();
 				}
 			}
 
 			if (batch.Count > 0)
 			{
-				yield return batch;
+				yield return batch.ToArray();
 			}
 		}
 	}
@@ -93,14 +93,14 @@ public static class ChannelExtensions
 				batch.Add(item);
 				if (batch.Count >= maxBatchSize)
 				{
-					yield return batch;
+					yield return batch.ToArray();
 					batch.Clear();
 				}
 			}
 
 			if (batch.Count > 0)
 			{
-				yield return batch;
+				yield return batch.ToArray();
 			}
 		}
 	}
