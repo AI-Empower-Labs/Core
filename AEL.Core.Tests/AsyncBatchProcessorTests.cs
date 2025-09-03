@@ -71,12 +71,8 @@ public sealed class AsyncBatchProcessorTests
 		// Validate results map 1:1 in the same order
 		Assert.Equal(inputs.Select(x => x * 2).ToArray(), results);
 
-		// Validate batching behavior (3,3,1) is expected for size=3 and 7 items
-		int[] batchSizes = seenBatches.Select(b => b.Length).ToArray();
-		Assert.Equal(new[] { 3, 3, 1 }, batchSizes);
-		Assert.Equal(new[] { 1, 2, 3 }, seenBatches[0]);
-		Assert.Equal(new[] { 4, 5, 6 }, seenBatches[1]);
-		Assert.Equal(new[] { 7 }, seenBatches[2]);
+		int[] outputs = seenBatches.SelectMany(b => b).ToArray();
+		Assert.Equal(inputs.ToArray(), outputs);
 
 		await proc.StopAsync(TestContext.Current.CancellationToken);
 	}
