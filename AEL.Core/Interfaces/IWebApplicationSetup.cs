@@ -3,5 +3,5 @@ namespace Microsoft.AspNetCore.Builder;
 
 public interface IWebApplicationSetup
 {
-	static abstract void Setup(WebApplication app);
+	abstract static ValueTask Setup(WebApplication app, CancellationToken cancellationToken = default);
 }

@@ -24,11 +24,12 @@ public static class WebApplicationRunner
 		Action<WebApplication>? configureApplication,
 		params Assembly[] assemblies)
 	{
+		using CancellationTokenSource cts = new();
 		using Startup startup = new();
 		try
 		{
-			await using WebApplication application = WebAppBuilder
-				.Build(args, configureBuilder, configureApplication, assemblies);
+			await using WebApplication application = await WebAppBuilder
+				.Build(args, configureBuilder, configureApplication, cts.Token, assemblies);
 			return await application.RunJasperFxCommands(args);
 		}
 		catch (OperationCanceledException)
@@ -49,6 +50,10 @@ public static class WebApplicationRunner
 		{
 			Log.Logger.Fatal(ex, "Host terminated unexpectedly");
 			return -1;
+		}
+		finally
+		{
+			await cts.CancelAsync();
 		}
 	}
 }

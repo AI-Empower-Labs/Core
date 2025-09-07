@@ -12,7 +12,7 @@ namespace Microsoft.Extensions.Hosting;
 
 public static class HostApplicationBuilderExtensions
 {
-	public static void AutomaticDependencyInjection<THostApplicationBuilder>(this THostApplicationBuilder builder, params Assembly[] assemblies)
+	public static async ValueTask AutomaticDependencyInjection<THostApplicationBuilder>(this THostApplicationBuilder builder, CancellationToken cancellationToken, params Assembly[] assemblies)
 		where THostApplicationBuilder : IHostApplicationBuilder
 	{
 		foreach (Type type in TypeResolverHelper.GetClassTypes(assemblies))
@@ -36,7 +36,12 @@ public static class HostApplicationBuilderExtensions
 			{
 				MethodInfo? methodInfo = type.GetMethod(nameof(IDependencyInjectionRegistration<>.Register));
 				int count = builder.Services.Count;
-				methodInfo?.Invoke(null, [builder]);
+				object? valueTaskObject = methodInfo?.Invoke(null, [builder, cancellationToken]);
+				if (valueTaskObject is ValueTask valueTask)
+				{
+					await valueTask;
+				}
+
 				Log.Logger.Debug("Registered {Count} types with {Type}",
 					builder.Services.Count - count,
 					type.FullName);

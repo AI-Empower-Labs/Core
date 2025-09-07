@@ -7,7 +7,7 @@ namespace Microsoft.AspNetCore.Builder;
 
 public static class WebApplicationExtensions
 {
-	public static void AutomaticWebApplicationSetup(this WebApplication webApplication, params Assembly[] assemblies)
+	public static async ValueTask AutomaticWebApplicationSetup(this WebApplication webApplication, CancellationToken cancellationToken, params Assembly[] assemblies)
 	{
 		foreach (Type type in TypeResolverHelper.GetTypes(
 			selector => selector
@@ -16,7 +16,11 @@ public static class WebApplicationExtensions
 			assemblies))
 		{
 			MethodInfo? methodInfo = type.GetMethod(nameof(IWebApplicationSetup.Setup));
-			methodInfo?.Invoke(null, [webApplication]);
+			object? valueTaskObject = methodInfo?.Invoke(null, [webApplication, cancellationToken]);
+			if (valueTaskObject is ValueTask valueTask)
+			{
+				await valueTask;
+			}
 		}
 	}
 }
