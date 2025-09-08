@@ -142,6 +142,22 @@ public abstract class AsyncBatchProcessor<TIn, TOut> : AsyncBackgroundService
 	/// </summary>
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
+		try
+		{
+			await ExecuteReadLoop(stoppingToken);
+		}
+		catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+		{
+			// Ignore
+		}
+		catch (Exception exception)
+		{
+			_logger.LogError(exception, "Exception while processing batch.");
+		}
+	}
+
+	private async Task ExecuteReadLoop(CancellationToken stoppingToken)
+	{
 		await foreach (ICollection<(TIn Value, TaskCompletionSource<TOut> TaskCompletionSource)> batch in
 			_channel.ReadAllBatch(_batchSize, stoppingToken))
 		{
