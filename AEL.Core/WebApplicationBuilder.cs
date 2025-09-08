@@ -1,6 +1,7 @@
 using System.Reflection;
 
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
 
 namespace AEL.Core;
@@ -23,6 +24,7 @@ public static class WebAppBuilder
 		params Assembly[] assemblies)
 	{
 		WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+		builder.WebHost.UseKestrel(options => options.AddServerHeader = false);
 		await builder.AutomaticDependencyInjection(cancellationToken, assemblies);
 		configureBuilder?.Invoke(builder);
 
