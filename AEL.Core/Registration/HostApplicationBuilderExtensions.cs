@@ -36,6 +36,16 @@ public static class HostApplicationBuilderExtensions
 			{
 				MethodInfo? methodInfo = type.GetMethod(nameof(IDependencyInjectionRegistration<>.Register));
 				int count = builder.Services.Count;
+				methodInfo?.Invoke(null, [builder]);
+				Log.Logger.Debug("Registered {Count} types with {Type}",
+					builder.Services.Count - count,
+					type.FullName);
+			}
+
+			if (type.IsBasedOn(typeof(IDependencyInjectionRegistrationAsync<THostApplicationBuilder>)))
+			{
+				MethodInfo? methodInfo = type.GetMethod(nameof(IDependencyInjectionRegistrationAsync<>.Register));
+				int count = builder.Services.Count;
 				object? valueTaskObject = methodInfo?.Invoke(null, [builder, cancellationToken]);
 				if (valueTaskObject is ValueTask valueTask)
 				{

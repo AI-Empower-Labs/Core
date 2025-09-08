@@ -4,5 +4,5 @@ namespace Microsoft.Extensions.Hosting;
 
 public interface IDependencyInjectionRegistration<in TBuilder>
 {
-	abstract static ValueTask Register(TBuilder builder, CancellationToken cancellationToken = default);
+	abstract static void Register(TBuilder builder);
 }
