@@ -12,14 +12,23 @@ public static class WebApplicationExtensions
 		foreach (Type type in TypeResolverHelper.GetTypes(
 			selector => selector
 				.AddClasses(filter => filter
-					.AssignableTo(typeof(IWebApplicationSetup)), false),
+					.AssignableTo(typeof(IWebApplicationSetup))
+					.AssignableTo(typeof(IWebApplicationSetupAsync)), false),
 			assemblies))
 		{
-			MethodInfo? methodInfo = type.GetMethod(nameof(IWebApplicationSetup.Setup));
-			object? valueTaskObject = methodInfo?.Invoke(null, [webApplication, cancellationToken]);
-			if (valueTaskObject is ValueTask valueTask)
+			if (type.IsBasedOn(typeof(IWebApplicationSetup)))
 			{
-				await valueTask;
+				MethodInfo? methodInfo = type.GetMethod(nameof(IWebApplicationSetup.Setup));
+				methodInfo?.Invoke(null, [webApplication]);
+			}
+			else if (type.IsBasedOn(typeof(IWebApplicationSetupAsync)))
+			{
+				MethodInfo? methodInfo = type.GetMethod(nameof(IWebApplicationSetupAsync.Setup));
+				object? valueTaskObject = methodInfo?.Invoke(null, [webApplication, cancellationToken]);
+				if (valueTaskObject is ValueTask valueTask)
+				{
+					await valueTask;
+				}
 			}
 		}
 	}
