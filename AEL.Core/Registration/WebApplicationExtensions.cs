@@ -10,10 +10,11 @@ public static class WebApplicationExtensions
 	public static async ValueTask AutomaticWebApplicationSetup(this WebApplication webApplication, CancellationToken cancellationToken, params Assembly[] assemblies)
 	{
 		foreach (Type type in TypeResolverHelper.GetTypes(
-			selector => selector
-				.AddClasses(filter => filter
-					.AssignableTo(typeof(IWebApplicationSetup))
-					.AssignableTo(typeof(IWebApplicationSetupAsync)), false),
+			selector =>
+			{
+				selector.AddClasses(filter => filter.AssignableTo(typeof(IWebApplicationSetup)), false);
+				selector.AddClasses(filter => filter.AssignableTo(typeof(IWebApplicationSetupAsync)), false);
+			},
 			assemblies))
 		{
 			if (type.IsBasedOn(typeof(IWebApplicationSetup)))
