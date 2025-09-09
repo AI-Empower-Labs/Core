@@ -35,7 +35,7 @@ public class TaskExtensionsTests
 	private sealed class TestLogger2 : ILogger
 	{
 		public Exception? LastEx;
-		IDisposable? ILogger.BeginScope<TState>(TState state) => new Dummy();
+		IDisposable ILogger.BeginScope<TState>(TState state) => new Dummy();
 		public bool IsEnabled(LogLevel logLevel) => true;
 		public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
 		{
@@ -55,12 +55,12 @@ public class TaskExtensionsTests
 	{
 		TestLogger2 logger = new();
 		Task faulty = Task.Run(() => throw new InvalidOperationException(), TestContext.Current.CancellationToken);
-		await faulty.WithExecuteWithProtection(logger, "msg", cancellationToken: TestContext.Current.CancellationToken);
+		await faulty.WithExceptionProtection(logger, "msg", cancellationToken: TestContext.Current.CancellationToken);
 		Assert.NotNull(logger.LastEx);
 
 		TestLogger2 logger2 = new();
 		Task<string> faultyT = Task.FromException<string>(new InvalidOperationException());
-		string? res = await faultyT.WithExecuteWithProtection(logger2, "msg", cancellationToken: TestContext.Current.CancellationToken);
+		string? res = await faultyT.WithExceptionProtection(logger2, "msg", cancellationToken: TestContext.Current.CancellationToken);
 		Assert.Null(res);
 		Assert.NotNull(logger2.LastEx);
 	}
