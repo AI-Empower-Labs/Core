@@ -34,15 +34,8 @@ public abstract class PeriodicExecutionAsyncBackgroundService(
 			Stopwatch stopwatch = Stopwatch.StartNew();
 			try
 			{
-				await Task.Run(() => ExecutePeriodically(stoppingToken), stoppingToken);
-			}
-			catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-			{
-				// Ignore
-			}
-			catch (Exception e)
-			{
-				_logger.LogError(e, "Service execution failed!");
+				await Task.Run(() => ExecutePeriodically(stoppingToken), stoppingToken)
+					.WithExceptionProtection(_logger, "Service execution failed!", cancellationToken: stoppingToken);
 			}
 			finally
 			{

@@ -25,7 +25,7 @@ public abstract partial class AsyncBackgroundService : AsyncDisposableBase, IHos
 	{
 		LogStart(_logger);
 		_executingTask = ExecuteAsync(_stoppingCts.Token)
-			.WithExecuteWithProtection(_logger, "Background service execution exception", cancellationToken: cancellationToken);
+			.WithExceptionProtection(_logger, "Background service execution exception", cancellationToken: cancellationToken);
 		return Task.CompletedTask;
 	}
 
@@ -50,22 +50,12 @@ public abstract partial class AsyncBackgroundService : AsyncDisposableBase, IHos
 		}
 	}
 
-	private async Task ShutdownService(Task executingTask, CancellationToken cancellationToken)
+	private Task ShutdownService(Task executingTask, CancellationToken cancellationToken)
 	{
-		try
-		{
-			LogStop(_logger);
-			await executingTask
-				.WithTimeout(TimeSpan.FromSeconds(10), cancellationToken: cancellationToken);
-		}
-		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-		{
-			// Ignore
-		}
-		catch (Exception exception)
-		{
-			LogServiceException(_logger, exception);
-		}
+		LogStop(_logger);
+		return executingTask
+			.WithTimeout(TimeSpan.FromSeconds(10), cancellationToken: cancellationToken)
+			.WithExceptionProtection(_logger, "Background service execution exception", cancellationToken);
 	}
 
 	protected virtual Task ExecuteAsync(CancellationToken stoppingToken)

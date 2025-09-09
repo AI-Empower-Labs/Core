@@ -102,7 +102,7 @@ public static class TaskExtensions
 		return default;
 	}
 
-	public static async Task WithExecuteWithProtection(this Task task,
+	public static async Task WithExceptionProtection(this Task task,
 		ILogger logger,
 		string message,
 		CancellationToken cancellationToken = default)
@@ -122,7 +122,7 @@ public static class TaskExtensions
 		}
 	}
 
-	public static async Task<T?> WithExecuteWithProtection<T>(this Task<T> task,
+	public static async Task<T?> WithExceptionProtection<T>(this Task<T> task,
 		ILogger logger,
 		string message,
 		CancellationToken cancellationToken = default) where T : class
@@ -130,6 +130,10 @@ public static class TaskExtensions
 		try
 		{
 			return await task.WaitAsync(cancellationToken);
+		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+		{
+			// Ignore
 		}
 		catch (Exception exception)
 		{
@@ -140,14 +144,14 @@ public static class TaskExtensions
 		return null;
 	}
 
-	public static async ValueTask WithExecuteWithProtection(this ValueTask task,
+	public static async ValueTask WithExceptionProtection(this ValueTask task,
 		ILogger logger,
 		string message,
 		CancellationToken cancellationToken = default)
 	{
 		await task
 			.AsTask()
-			.WithExecuteWithProtection(logger, message, cancellationToken);
+			.WithExceptionProtection(logger, message, cancellationToken);
 	}
 
 	public static async Task<T> WithTimeout<T>(this Task<T> task,

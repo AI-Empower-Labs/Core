@@ -140,20 +140,10 @@ public abstract class AsyncBatchProcessor<TIn, TOut> : AsyncBackgroundService
 	/// Processes data in batches using the provided function, reading from the input channel
 	/// until completion or cancellation.
 	/// </summary>
-	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+	protected override Task ExecuteAsync(CancellationToken stoppingToken)
 	{
-		try
-		{
-			await ExecuteReadLoop(stoppingToken);
-		}
-		catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-		{
-			// Ignore
-		}
-		catch (Exception exception)
-		{
-			_logger.LogError(exception, "Exception while processing batch.");
-		}
+		return ExecuteReadLoop(stoppingToken)
+			.WithExceptionProtection(_logger, "Exception while processing batch.", stoppingToken);
 	}
 
 	private async Task ExecuteReadLoop(CancellationToken stoppingToken)
