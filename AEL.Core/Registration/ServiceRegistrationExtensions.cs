@@ -4,6 +4,8 @@ using AEL.Core.Interfaces;
 
 using FluentValidation;
 
+using Microsoft.Extensions.Hosting;
+
 // ReSharper disable once CheckNamespace
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -16,6 +18,11 @@ public static class ServiceRegistrationExtensions
 
 	public static void RegisterType(this IServiceCollection services, Type serviceType, ServiceLifetime serviceLifetime)
 	{
+		if (typeof(IHostedService).IsAssignableFrom(serviceType) && serviceLifetime != ServiceLifetime.Singleton)
+		{
+			throw new InvalidOperationException($"Cannot register {serviceType.FullName} as {serviceLifetime} because it implements {typeof(IHostedService)} which must be registered as singleton");
+		}
+
 		services.Add(new ServiceDescriptor(serviceType, serviceType, serviceLifetime));
 		foreach (Type @interface in TypesToRegister(serviceType))
 		{
@@ -27,6 +34,11 @@ public static class ServiceRegistrationExtensions
 		Func<IServiceProvider, T> factory,
 		ServiceLifetime serviceLifetime) where T : notnull
 	{
+		if (typeof(IHostedService).IsAssignableFrom(typeof(T)) && serviceLifetime != ServiceLifetime.Singleton)
+		{
+			throw new InvalidOperationException($"Cannot register {typeof(T).FullName} as {serviceLifetime} because it implements {typeof(IHostedService)} which must be registered as singleton");
+		}
+
 		services.Add(new ServiceDescriptor(typeof(T), null, (sp, _) => factory(sp), serviceLifetime));
 		foreach (Type @interface in TypesToRegister(typeof(T)))
 		{
