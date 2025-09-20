@@ -21,7 +21,7 @@ public static class FluentValidationExtensions
 	{
 		return ruleBuilder
 			.NotNull()
-			.Must(uri => uri?.IsAbsoluteUri != null)
+			.Must(uri => uri?.IsAbsoluteUri is not null)
 			.WithMessage("Must be an absolute uri");
 	}
 

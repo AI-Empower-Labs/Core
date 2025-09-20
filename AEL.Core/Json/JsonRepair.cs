@@ -36,7 +36,7 @@ public sealed partial class JsonRepair
 	/// <summary>
 	/// Dictionary of control characters and their corresponding escape sequences.
 	/// </summary>
-	private static readonly Dictionary<char, string> ControlCharacters = new()
+	private static readonly Dictionary<char, string> s_controlCharacters = new()
 	{
 		{ '\b', "\b" },
 		{ '\f', "\f" },
@@ -48,7 +48,7 @@ public sealed partial class JsonRepair
 	/// <summary>
 	/// Dictionary of escape characters and their corresponding escape sequences.
 	/// </summary>
-	private static readonly Dictionary<char, string> EscapeCharacters = new()
+	private static readonly Dictionary<char, string> s_escapeCharacters = new()
 	{
 		{ '\"', "\"" },
 		{ '\\', "\\" },
@@ -567,8 +567,8 @@ public sealed partial class JsonRepair
 				if (_text.CharCodeAt(_i) == StringUtils.CodeBackslash)
 				{
 					char character = _text.CharCodeAt(_i + 1);
-					string? escapeChar = EscapeCharacters.GetValueOrDefault(character);
-					if (escapeChar != null)
+					string? escapeChar = s_escapeCharacters.GetValueOrDefault(character);
+					if (escapeChar is not null)
 					{
 						_output += _text.Substring(_i, 2);
 						_i += 2;
@@ -611,7 +611,7 @@ public sealed partial class JsonRepair
 					else if (StringUtils.IsControlCharacter(character))
 					{
 						// unescaped control character
-						_output += ControlCharacters[character];
+						_output += s_controlCharacters[character];
 						_i++;
 					}
 					else

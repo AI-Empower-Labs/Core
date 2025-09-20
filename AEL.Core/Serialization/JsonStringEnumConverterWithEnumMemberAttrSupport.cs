@@ -14,7 +14,7 @@ public sealed class JsonStringEnumConverterWithEnumMemberAttrSupport<[Dynamicall
 	{
 		Dictionary<string, string?> map = typeof(TEnum).GetFields(BindingFlags.Public | BindingFlags.Static)
 			.Select(static f => (f.Name, AttributeName: f.GetCustomAttribute<EnumMemberAttribute>()?.Value))
-			.Where(pair => pair.AttributeName != null)
+			.Where(pair => pair.AttributeName is not null)
 			.ToDictionary();
 
 		return map.Count > 0 ? new EnumMemberNamingPolicy(map!) : null;
