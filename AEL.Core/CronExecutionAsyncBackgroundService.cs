@@ -1,30 +1,35 @@
 using System.Diagnostics;
 
+using Cronos;
+
 using Microsoft.Extensions.Logging;
 
 namespace AEL.Core;
 
-public abstract class PeriodicExecutionAsyncBackgroundService(
-	bool startImmediately,
-	TimeSpan period,
+public abstract class CronExecutionAsyncBackgroundService(
+	CronExpression cronExpression,
 	ILogger logger) : AsyncBackgroundService(logger)
 {
 	private readonly ILogger _logger = logger;
 
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
-		if (startImmediately)
-		{
-			_logger.LogInformation("Service executing at startup");
-			await ExecutePeriodicServiceTask();
-		}
-
 		while (!stoppingToken.IsCancellationRequested)
 		{
-			await Task.Delay(period, stoppingToken).WithSilentCancellation(cancellationToken: stoppingToken);
+			DateTimeOffset? nextOccurence = cronExpression.GetNextOccurrence(DateTimeOffset.UtcNow, TimeZoneInfo.Utc);
+			if (nextOccurence is null)
+			{
+				_logger.LogInformation("No next execution occurence, exiting.");
+				return;
+			}
+
+			TimeSpan timeToWait = nextOccurence.Value - DateTimeOffset.UtcNow;
+			await Task.Delay(timeToWait, stoppingToken).WithSilentCancellation(cancellationToken: stoppingToken);
 			if (stoppingToken.IsCancellationRequested) continue;
-			_logger.LogInformation("Service execution after waiting period {Period}", period);
+			using IDisposable? scope = _logger.BeginScope("Occurence: {Occurence}", nextOccurence);
+			_logger.LogInformation("Service execution");
 			await ExecutePeriodicServiceTask();
+			_logger.LogInformation("Service execution finished");
 		}
 
 		return;
