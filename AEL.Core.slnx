@@ -1,23 +1,8 @@
 ﻿<Solution>
-  <Configurations>
-    <Platform Name="Any CPU" />
-    <Platform Name="x64" />
-    <Platform Name="x86" />
-  </Configurations>
-  <Folder Name="/Solution Items/">
-    <File Path="Directory.Build.props" />
-    <File Path="README.md" />
-  </Folder>
-  <Project Path="AEL.Core.Tests\AEL.Core.Tests.csproj" Type="Classic C#">
-    <Configuration Solution="Debug|x64" Project="Debug|Any CPU" />
-    <Configuration Solution="Debug|x86" Project="Debug|Any CPU" />
-    <Configuration Solution="Release|x64" Project="Release|Any CPU" />
-    <Configuration Solution="Release|x86" Project="Release|Any CPU" />
-  </Project>
-  <Project Path="AEL.Core\AEL.Core.csproj" Type="Classic C#">
-    <Configuration Solution="Debug|x64" Project="Debug|Any CPU" />
-    <Configuration Solution="Debug|x86" Project="Debug|Any CPU" />
-    <Configuration Solution="Release|x64" Project="Release|Any CPU" />
-    <Configuration Solution="Release|x86" Project="Release|Any CPU" />
-  </Project>
+	<Folder Name="/Solution Items/">
+		<File Path="Directory.Build.props"/>
+		<File Path="README.md"/>
+	</Folder>
+	<Project Path="AEL.Core.Tests\AEL.Core.Tests.csproj" Type="Classic C#"/>
+	<Project Path="AEL.Core\AEL.Core.csproj" Type="Classic C#"/>
 </Solution>
