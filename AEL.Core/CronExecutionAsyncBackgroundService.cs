@@ -8,12 +8,20 @@ namespace AEL.Core;
 
 public abstract class CronExecutionAsyncBackgroundService(
 	CronExpression cronExpression,
-	ILogger logger) : AsyncBackgroundService(logger)
+	ILogger logger,
+	bool executeImmediately = false) : AsyncBackgroundService(logger)
 {
 	private readonly ILogger _logger = logger;
 
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
+		if (executeImmediately)
+		{
+			_logger.LogInformation("Service execution");
+			await ExecutePeriodicServiceTask();
+			_logger.LogInformation("Service execution finished");
+		}
+
 		while (!stoppingToken.IsCancellationRequested)
 		{
 			DateTimeOffset? nextOccurence = cronExpression.GetNextOccurrence(DateTimeOffset.UtcNow, TimeZoneInfo.Utc);
