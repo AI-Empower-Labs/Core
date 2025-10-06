@@ -15,7 +15,7 @@ public static class JsonElementExtensions
 		catch (Exception e)
 		{
 #if DEBUG
-			Debug.WriteLine("Error while deserializing JSON element: {Json}", jsonElement.ToString());
+			Diagnostics.Debug.WriteLine("Error while deserializing JSON element: {Json}", jsonElement.ToString());
 #else
 			logger?.LogError(e, "Error while deserializing JSON element: {Json}", jsonElement);
 #endif
@@ -32,7 +32,7 @@ public static class JsonElementExtensions
 		catch (Exception e)
 		{
 #if DEBUG
-			Debug.WriteLine("Error while deserializing JSON element: {Json}", jsonDocument.RootElement.ToString());
+			Diagnostics.Debug.WriteLine("Error while deserializing JSON element: {Json}", jsonDocument.RootElement.ToString());
 #else
 			logger?.LogError(e, "Error while deserializing JSON element: {Json}", jsonDocument.RootElement);
 #endif
