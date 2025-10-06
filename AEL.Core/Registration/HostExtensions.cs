@@ -13,7 +13,7 @@ public static class HostExtensions
 			selector =>
 			{
 				selector.AddClasses(filter => filter.AssignableTo(typeof(IHostSetup<THost>)), false);
-				selector.AddClasses(filter => filter.AssignableTo(typeof(IHostSetup<THost>)), false);
+				selector.AddClasses(filter => filter.AssignableTo(typeof(IHostSetupAsync<THost>)), false);
 			},
 			assemblies))
 		{

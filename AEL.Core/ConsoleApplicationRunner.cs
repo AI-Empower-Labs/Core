@@ -46,6 +46,7 @@ public static class ConsoleApplicationRunner
 					IHost host = hostApplicationBuilder.Build();
 					configureApplication?.Invoke(host);
 					return host;
-				});
+				},
+				assemblies);
 	}
 }

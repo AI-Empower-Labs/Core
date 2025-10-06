@@ -48,6 +48,7 @@ public static class WebApplicationRunner
 					WebApplication webApplication = webApplicationBuilder.Build();
 					configureApplication?.Invoke(webApplication);
 					return webApplication;
-				});
+				},
+				assemblies);
 	}
 }
