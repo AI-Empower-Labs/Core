@@ -11,6 +11,8 @@ namespace AEL.Core;
 
 public static class WebApplicationRunner
 {
+	public static bool DisableJasper = false;
+
 	public static Task<int> Run(
 		string[] args,
 		params Assembly[] assemblies)
@@ -30,6 +32,12 @@ public static class WebApplicationRunner
 		{
 			await using WebApplication application = await WebAppBuilder
 				.Build(args, configureBuilder, configureApplication, cts.Token, assemblies);
+			if (DisableJasper)
+			{
+				await application.RunAsync();
+				return 0;
+			}
+
 			return await application.RunJasperFxCommands(args);
 		}
 		catch (OperationCanceledException)
@@ -43,7 +51,7 @@ public static class WebApplicationRunner
 #if DEBUG
 			throw; // For unit test
 #else
-	return -1;
+			return -1;
 #endif
 		}
 		catch (Exception ex)
