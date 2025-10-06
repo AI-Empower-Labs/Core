@@ -1,6 +1,4 @@
-﻿using System.Diagnostics;
-
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 
 #pragma warning disable CS0168 // Variable is declared but never used
 

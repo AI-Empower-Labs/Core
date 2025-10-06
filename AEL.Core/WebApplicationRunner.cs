@@ -11,19 +11,31 @@ namespace AEL.Core;
 
 public static class WebApplicationRunner
 {
-	public static bool DisableJasper = false;
+	public static Task<int> Run(string[] args, bool disableJasper = false)
+	{
+		return Run(args, disableJasper, null, null, [Assembly.GetEntryAssembly()!]);
+	}
 
 	public static Task<int> Run(
 		string[] args,
 		params Assembly[] assemblies)
 	{
-		return Run(args, null, null, assemblies);
+		return Run(args, false, null, null, assemblies);
+	}
+
+	public static Task<int> Run(
+		string[] args,
+		bool disableJasper = false,
+		params Assembly[] assemblies)
+	{
+		return Run(args, disableJasper, null, null, assemblies);
 	}
 
 	public static async Task<int> Run(
 		string[] args,
-		Action<WebApplicationBuilder>? configureBuilder,
-		Action<WebApplication>? configureApplication,
+		bool disableJasper = false,
+		Action<WebApplicationBuilder>? configureBuilder = null,
+		Action<WebApplication>? configureApplication = null,
 		params Assembly[] assemblies)
 	{
 		using CancellationTokenSource cts = new();
@@ -32,7 +44,7 @@ public static class WebApplicationRunner
 		{
 			await using WebApplication application = await WebAppBuilder
 				.Build(args, configureBuilder, configureApplication, cts.Token, assemblies);
-			if (DisableJasper)
+			if (disableJasper)
 			{
 				await application.RunAsync();
 				return 0;
