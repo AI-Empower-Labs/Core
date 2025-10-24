@@ -31,4 +31,9 @@ jobs:
       run: dotnet pack --configuration Release --no-build --output ./nupkgs
     - name: Publish NuGet
       if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      run: dotnet nuget push ./nupkgs/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+      run: |
+        if compgen -G "./nupkgs/*.nupkg" > /dev/null; then
+          dotnet nuget push ./nupkgs/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+        else
+          echo "No NuGet packages found to publish."
+        fi
