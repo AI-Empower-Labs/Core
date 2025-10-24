@@ -7,6 +7,18 @@
 		<NoWarn>NU1008</NoWarn>
 		<LangVersion>preview</LangVersion>
 		<NoWarn>NU1008</NoWarn>
+
+		<!-- NuGet Package Properties -->
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<PackageId>AEL.Core</PackageId>
+		<Version>1.0.0</Version>
+		<Authors>Esben Carlsen</Authors>
+		<Company>AI Empower Labs</Company>
+		<Description>Core library for AEL framework</Description>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<RepositoryUrl>https://github.com/AI-Empower-Labs/Core</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageTags>ael;core;framework</PackageTags>
 	</PropertyGroup>
 
 	<ItemGroup>

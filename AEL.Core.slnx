@@ -2,6 +2,7 @@
 	<Folder Name="/Solution Items/">
 		<File Path="Directory.Build.props"/>
 		<File Path="README.md"/>
+		<File Path=".github\workflows\dotnet.yml"/>
 	</Folder>
 	<Project Path="AEL.Core.Tests\AEL.Core.Tests.csproj" Type="Classic C#"/>
 	<Project Path="AEL.Core\AEL.Core.csproj" Type="Classic C#"/>
