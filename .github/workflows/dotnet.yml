@@ -30,7 +30,7 @@ jobs:
     - name: Test
       run: dotnet test --no-build --verbosity normal --configuration Release
     - name: Pack NuGet
-      run: dotnet pack --configuration Release --no-build --output ./nupkgs
+      run: dotnet pack AEL.Core/AEL.Core.csproj --configuration Release --no-build --output ./nupkgs
     - name: Publish NuGet
       if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       run: |
