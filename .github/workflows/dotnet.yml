@@ -35,7 +35,7 @@ jobs:
       if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       run: |
         if compgen -G "./nupkgs/*.nupkg" > /dev/null; then
-          dotnet nuget push ./nupkgs/*.nupkg --source https://nuget.pkg.github.com/AI-Empower-Labs/index.json --api-key ${{ secrets.GITHUB_TOKEN }}
+          dotnet nuget push ./nupkgs/*.nupkg --source https://nuget.pkg.github.com/AI-Empower-Labs/index.json --api-key ${{ secrets.NUGET_PAT }}
         else
           echo "No NuGet packages found to publish."
         fi
