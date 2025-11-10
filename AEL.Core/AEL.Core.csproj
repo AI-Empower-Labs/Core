@@ -10,7 +10,6 @@
 
 		<!-- NuGet Package Properties -->
 		<PackageId>AEL.Core</PackageId>
-		<Version>1.0.0</Version>
 		<Authors>Esben Carlsen</Authors>
 		<Company>AI Empower Labs</Company>
 		<Description>Core library for AEL framework</Description>
