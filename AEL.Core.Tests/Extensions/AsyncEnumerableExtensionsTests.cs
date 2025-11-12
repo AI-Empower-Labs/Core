@@ -6,7 +6,9 @@ public sealed class AsyncEnumerableExtensionsTests
 	public async Task Batch_SplitsIntoBatches()
 	{
 		List<ICollection<int>> batches = [];
-		await foreach (ICollection<int> batch in Enumerable.Range(0, 5).ToAsyncEnumerable().Batch(2, cancellationToken: TestContext.Current.CancellationToken))
+		await foreach (ICollection<int> batch in Enumerable.Range(0, 5)
+			.ToAsyncEnumerable()
+			.Batch(2, cancellationToken: TestContext.Current.CancellationToken))
 		{
 			batches.Add(batch.ToArray());
 		}
