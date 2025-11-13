@@ -1,7 +1,6 @@
-﻿// ReSharper disable once CheckNamespace
+﻿using System.Collections.Concurrent;
 
-using System.Collections.Concurrent;
-
+// ReSharper disable once CheckNamespace
 namespace System.Linq;
 
 public static class EnumerableExtensions
@@ -34,4 +33,18 @@ public static class EnumerableExtensions
 			.Select(tuple => tuple.Item2)
 			.ToArray();
 	}
+
+#if NET10_0_OR_GREATER
+	extension(IEnumerable<string> source)
+	{
+		/// <summary>
+		/// Joins the strings in the sequence with the specified separator.
+		/// </summary>
+		/// <param name="left"></param>
+		/// <param name="separator"></param>
+		/// <returns></returns>
+		public static string operator *(IEnumerable<string> left, string separator)
+			=> string.Join(separator, left);
+	}
+#endif
 }
