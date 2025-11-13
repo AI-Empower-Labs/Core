@@ -60,4 +60,69 @@ public sealed class UriExtensionsTests
 
 		Assert.Equal(absolute, result);
 	}
+
+	[Fact]
+	public void AmpersandOperator_AppendsQuery_WithLeadingQuestionMark()
+	{
+		Uri baseUri = new("https://example.com/items");
+		Uri result = baseUri & "?page=2&sort=asc";
+
+		Assert.Equal(new Uri("https://example.com/items?page=2&sort=asc"), result);
+	}
+
+	[Fact]
+	public void AmpersandOperator_Concatenates_WhenExistingQueryPresent()
+	{
+		Uri baseUri = new("https://example.com/items?category=books");
+		Uri result = baseUri & "page=1";
+
+		Assert.Equal(new Uri("https://example.com/items?category=books&page=1"), result);
+	}
+
+	[Fact]
+	public void AmpersandOperator_RespectsInlineFragment()
+	{
+		Uri baseUri = new("https://example.com/items");
+		Uri result = baseUri & "page=1#top";
+
+		Assert.Equal(new Uri("https://example.com/items?page=1#top"), result);
+	}
+
+	[Fact]
+	public void AmpersandOperator_EmptyString_ReturnsOriginal()
+	{
+		Uri baseUri = new("https://example.com/items");
+		Uri result = baseUri & string.Empty;
+
+		Assert.Same(baseUri, result);
+	}
+
+	[Fact]
+	public void AmpersandOperator_NullString_ReturnsOriginal()
+	{
+		Uri baseUri = new("https://example.com/items");
+		string? rhs = null;
+		// ReSharper disable once ExpressionIsAlwaysNull
+		Uri result = baseUri & rhs!;
+
+		Assert.Same(baseUri, result);
+	}
+
+	[Fact]
+	public void AmpersandOperator_FragmentOnly_PreservesQuery_AndSetsFragment()
+	{
+		Uri baseUri = new("https://example.com/items?q=abc");
+		Uri result = baseUri & "#section1";
+
+		Assert.Equal(new Uri("https://example.com/items?q=abc#section1"), result);
+	}
+
+	[Fact]
+	public void AmpersandOperator_AppendsQuery_WhenQueryAlreadyPresent()
+	{
+		Uri baseUri = new("https://example.com/items?q=abc");
+		Uri result = baseUri & "q=abc";
+
+		Assert.Equal(new Uri("https://example.com/items?q=abc&q=abc"), result);
+	}
 }
