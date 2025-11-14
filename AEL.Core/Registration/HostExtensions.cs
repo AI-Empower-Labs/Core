@@ -19,7 +19,7 @@ public static class HostExtensions
 		{
 			if (type.IsBasedOn(typeof(IHostSetup<THost>)))
 			{
-				MethodInfo? methodInfo = type.GetMethod(nameof(IHostSetup<THost>.Setup));
+				MethodInfo? methodInfo = type.GetMethod(nameof(IHostSetup<>.Setup));
 				methodInfo?.Invoke(null, [host]);
 			}
 			else if (type.IsBasedOn(typeof(IHostSetupAsync<THost>)))
