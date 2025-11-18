@@ -32,11 +32,19 @@ public abstract class CronExecutionAsyncBackgroundService(
 			}
 
 			TimeSpan timeToWait = nextOccurence.Value - DateTimeOffset.UtcNow;
-			await Task.Delay(timeToWait, stoppingToken).WithSilentCancellation(cancellationToken: stoppingToken);
-			if (stoppingToken.IsCancellationRequested) continue;
+			if (timeToWait <= TimeSpan.Zero)
+			{
+				await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
+				continue;
+			}
+
+			await Task.Delay(timeToWait, stoppingToken);
+
+			if (stoppingToken.IsCancellationRequested) break;
 			using IDisposable? scope = _logger.BeginScope("Occurence: {Occurence}", nextOccurence);
 			_logger.LogInformation("Service execution");
-			await ExecutePeriodicServiceTask();
+			await ExecutePeriodicServiceTask()
+				.WithExceptionProtection(_logger, "Service execution failed!", cancellationToken: stoppingToken);
 			_logger.LogInformation("Service execution finished");
 		}
 
@@ -47,8 +55,7 @@ public abstract class CronExecutionAsyncBackgroundService(
 			Stopwatch stopwatch = Stopwatch.StartNew();
 			try
 			{
-				await Task.Run(() => ExecutePeriodically(stoppingToken), stoppingToken)
-					.WithExceptionProtection(_logger, "Service execution failed!", cancellationToken: stoppingToken);
+				await Task.Run(() => ExecutePeriodically(stoppingToken), stoppingToken);
 			}
 			finally
 			{
