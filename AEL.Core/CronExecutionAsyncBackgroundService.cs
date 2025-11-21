@@ -22,6 +22,7 @@ public abstract class CronExecutionAsyncBackgroundService(
 			_logger.LogInformation("Service execution finished");
 		}
 
+		DateTimeOffset? lastOccurence = null;
 		while (!stoppingToken.IsCancellationRequested)
 		{
 			DateTimeOffset? nextOccurence = cronExpression.GetNextOccurrence(DateTimeOffset.UtcNow, TimeZoneInfo.Utc);
@@ -31,6 +32,12 @@ public abstract class CronExecutionAsyncBackgroundService(
 				return;
 			}
 
+			if (lastOccurence is not null && lastOccurence == nextOccurence)
+			{
+				await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
+				continue;
+			}
+
 			TimeSpan timeToWait = nextOccurence.Value - DateTimeOffset.UtcNow;
 			if (timeToWait <= TimeSpan.Zero)
 			{
@@ -38,14 +45,22 @@ public abstract class CronExecutionAsyncBackgroundService(
 				continue;
 			}
 
+			lastOccurence = nextOccurence;
 			await Task.Delay(timeToWait, stoppingToken);
 
 			if (stoppingToken.IsCancellationRequested) break;
-			using IDisposable? scope = _logger.BeginScope("Occurence: {Occurence}", nextOccurence);
-			_logger.LogInformation("Service execution");
-			await ExecutePeriodicServiceTask()
-				.WithExceptionProtection(_logger, "Service execution failed!", cancellationToken: stoppingToken);
-			_logger.LogInformation("Service execution finished");
+			IDisposable? scope = _logger.BeginScope("Occurence: {Occurence}", nextOccurence);
+			try
+			{
+				_logger.LogInformation("Service execution");
+				await ExecutePeriodicServiceTask()
+					.WithExceptionProtection(_logger, "Service execution failed!", cancellationToken: stoppingToken);
+				_logger.LogInformation("Service execution finished");
+			}
+			finally
+			{
+				scope?.Dispose();
+			}
 		}
 
 		return;
@@ -55,7 +70,7 @@ public abstract class CronExecutionAsyncBackgroundService(
 			Stopwatch stopwatch = Stopwatch.StartNew();
 			try
 			{
-				await Task.Run(() => ExecutePeriodically(stoppingToken), stoppingToken);
+				await ExecutePeriodically(stoppingToken);
 			}
 			finally
 			{
