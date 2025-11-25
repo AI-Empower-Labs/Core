@@ -70,7 +70,7 @@ public abstract class CronExecutionAsyncBackgroundService(
 			Stopwatch stopwatch = Stopwatch.StartNew();
 			try
 			{
-				await ExecutePeriodically(stoppingToken);
+				await Task.Run(() => ExecutePeriodically(stoppingToken), stoppingToken);
 			}
 			finally
 			{
