@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Reflection;
 using System.Text;
 using System.Text.Json.Serialization;
@@ -19,17 +20,32 @@ public sealed class Startup : DisposableBase
 			.Enrich.FromLogContext()
 			.Enrich.WithExceptionDetails()
 			.WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level}] {SourceContext}{NewLine}{Message:lj}{NewLine}{Exception}{NewLine}", theme: AnsiConsoleTheme.Code)
-			.WriteTo.OpenTelemetry(_ => {})
+			.WriteTo.OpenTelemetry(_ => { })
 			.CreateBootstrapLogger();
+		DisposableBag.Add(Log.CloseAndFlush);
 
-		AppDomain.CurrentDomain.SetData("REGEX_DEFAULT_MATCH_TIMEOUT", TimeSpan.FromSeconds(1.0));
+		// Set a 2-second timeout for all Regex operations globally
+		AppDomain.CurrentDomain.SetData("REGEX_DEFAULT_MATCH_TIMEOUT", TimeSpan.FromSeconds(2.0));
+
+		// Allows the console to display symbols, emojis, and foreign characters
 		Console.OutputEncoding = Encoding.UTF8;
-		Log.Logger.Information("Server Starting...");
-		DisposableBag.Add(() =>
+		Console.InputEncoding = Encoding.UTF8;
+
+		CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+		CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
+
+		// Catches exceptions thrown on the main thread that weren't caught by a try/catch
+		AppDomain.CurrentDomain.UnhandledException += (_, e) =>
 		{
-			Log.Logger.Information("Server Shutting down...");
-			Log.CloseAndFlush();
-		});
+			Log.Logger.Fatal($"CRITICAL ERROR: {e.ExceptionObject}");
+		};
+
+		// Catches exceptions on background Task threads that were "forgotten"
+		TaskScheduler.UnobservedTaskException += (_, e) =>
+		{
+			Log.Logger.Error("Background Task Error");
+			e.SetObserved(); // Prevents the process from crashing in older .NET versions
+		};
 
 		// Configure FluentValidation to use JSON property names in validation error messages
 		// This ensures that validation error messages display the JSON property name (if available)
