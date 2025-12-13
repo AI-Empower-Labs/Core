@@ -35,25 +35,39 @@ public static class HostApplicationBuilderExtensions
 			if (type.IsBasedOn(typeof(IDependencyInjectionRegistration<THostApplicationBuilder>)))
 			{
 				MethodInfo? methodInfo = type.GetMethod(nameof(IDependencyInjectionRegistration<>.Register));
-				int count = builder.Services.Count;
-				methodInfo?.Invoke(null, [builder]);
+				if (methodInfo is null || methodInfo.ReturnType != typeof(void))
+				{
+					throw new InvalidOperationException(
+						$"Type {type.FullName} implements {nameof(IDependencyInjectionRegistration<>)}<{typeof(THostApplicationBuilder).Name}> " +
+						$"but does not declare: public static void {nameof(IDependencyInjectionRegistration<>.Register)}({typeof(THostApplicationBuilder).Name} builder).");
+				}
+
+				int beforeCount = builder.Services.Count;
+				methodInfo.Invoke(null, [builder]);
 				Log.Logger.Debug("Registered {Count} types with {Type}",
-					builder.Services.Count - count,
+					builder.Services.Count - beforeCount,
 					type.FullName);
 			}
 
 			if (type.IsBasedOn(typeof(IDependencyInjectionRegistrationAsync<THostApplicationBuilder>)))
 			{
 				MethodInfo? methodInfo = type.GetMethod(nameof(IDependencyInjectionRegistrationAsync<>.Register));
-				int count = builder.Services.Count;
-				object? valueTaskObject = methodInfo?.Invoke(null, [builder, cancellationToken]);
+				if (methodInfo is null || methodInfo.ReturnType != typeof(ValueTask))
+				{
+					throw new InvalidOperationException(
+						$"Type {type.FullName} implements {nameof(IDependencyInjectionRegistrationAsync<>)}<{typeof(THostApplicationBuilder).Name}> " +
+						$"but does not declare: public static ValueTask {nameof(IDependencyInjectionRegistrationAsync<>.Register)}({typeof(THostApplicationBuilder).Name} builder).");
+				}
+
+				int beforeCount = builder.Services.Count;
+				object? valueTaskObject = methodInfo.Invoke(null, [builder, cancellationToken]);
 				if (valueTaskObject is ValueTask valueTask)
 				{
 					await valueTask;
 				}
 
 				Log.Logger.Debug("Registered {Count} types with {Type}",
-					builder.Services.Count - count,
+					builder.Services.Count - beforeCount,
 					type.FullName);
 			}
 		}
