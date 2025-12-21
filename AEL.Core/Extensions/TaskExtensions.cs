@@ -8,7 +8,7 @@ public static class TaskExtensions
 	private static readonly Action<Task> s_ignoreTaskContinuation = t => _ = t.Exception;
 
 	/// <summary>
-	/// Wraps a task with one that will complete as cancelled based on a cancellation token,
+	/// Wraps a task with one that will complete as canceled based on a cancellation token,
 	/// allowing someone to await a task but be able to break out early by cancelling the token.
 	/// </summary>
 	/// <typeparam name="T">The type of value returned by the task.</typeparam>
