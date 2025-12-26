@@ -1,14 +1,20 @@
+using Nerdbank.Streams;
+
 namespace System.IO;
 
 public static class ProgressStreamExtensions
 {
 	public static Stream AsReadProgressStream(this Stream stream, Action<int> progress)
 	{
-		return new ProgressStream(stream, progress, null);
+		MonitoringStream monitoringStream = new(stream);
+		monitoringStream.DidReadAny += (_, segment) => progress(segment.Length);
+		return monitoringStream;
 	}
 
 	public static Stream AsWriteProgressStream(this Stream stream, Action<int> progress)
 	{
-		return new ProgressStream(stream, null, progress);
+		MonitoringStream monitoringStream = new(stream);
+		monitoringStream.DidWriteAny += (_, segment) => progress(segment.Length);
+		return monitoringStream;
 	}
 }
