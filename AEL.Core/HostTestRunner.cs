@@ -6,7 +6,7 @@ namespace AEL.Core;
 
 public static class HostTestRunner
 {
-	public static Task<IAsyncDisposable> Start(
+	public static Task<TestRunner<IHost>> Start(
 		string[] args,
 		Action<IHostApplicationBuilder>? configureBuilder = null,
 		Action<IHost>? configureApplication = null,
