@@ -24,7 +24,7 @@ public static class HostRunner
 		using Startup startup = new();
 		try
 		{
-			using THost host = await HostBuilder.Build(args, create, build, cts.Token, assemblies);
+			using THost host = await HostBuilder.Build(args, create, null, build, null, cts.Token, assemblies);
 			if (disableJasper)
 			{
 				await host.RunAsync(token: cts.Token);

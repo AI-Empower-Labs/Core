@@ -10,6 +10,8 @@ public static class HostTestRunner
 		string[] args,
 		Action<IHostApplicationBuilder>? configureBuilder = null,
 		Action<IHost>? configureApplication = null,
+		bool startHostedServices = false,
+		CancellationToken cancellationToken = default,
 		params Assembly[] assemblies)
 	{
 		return TestRunner.Start<IHost, HostApplicationBuilder>(
@@ -26,6 +28,8 @@ public static class HostTestRunner
 				configureApplication?.Invoke(host);
 				return host;
 			},
+			startHostedServices,
+			cancellationToken,
 			assemblies);
 	}
 }
