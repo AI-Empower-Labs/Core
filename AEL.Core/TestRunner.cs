@@ -37,7 +37,7 @@ public static class TestRunner
 				// Remove IHostedService service descriptors
 				foreach (ServiceDescriptor serviceDescriptor in builder.Services.ToArray())
 				{
-					if (serviceDescriptor.ImplementationType?.IsBasedOn(typeof(IHostedService)) ?? false)
+					if (serviceDescriptor.ServiceType == typeof(IHostedService))
 					{
 						builder.Services.Remove(serviceDescriptor);
 					}
