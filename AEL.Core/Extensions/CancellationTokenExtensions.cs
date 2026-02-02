@@ -1,4 +1,4 @@
-namespace AEL.Core.Extensions;
+namespace System.Threading;
 
 public static class CancellationTokenExtensions
 {
