@@ -1,6 +1,6 @@
 namespace AEL.Core.Tests.Extensions;
 
-public class DateTimeExtensionsTests
+public sealed class DateTimeExtensionsTests
 {
     [Theory]
     [InlineData("2023-01-02", "2023-01-01", "2023-01-03", true, true)]
@@ -41,24 +41,6 @@ public class DateTimeExtensionsTests
     }
 
     [Fact]
-    public void FromUnixTime_And_ToUnixTime_AreInverse()
-    {
-        double seconds = 1_650_000_000;
-        DateTime dt = seconds.FromUnixTime();
-        Assert.Equal(seconds, dt.ToUnixTime());
-        Assert.Equal(DateTimeKind.Utc, dt.Kind);
-    }
-
-    [Fact]
-    public void FromUnixTimeMs_And_ToUnixTimeMs_AreInverse()
-    {
-        double ms = 1_650_000_000_000;
-        DateTime dt = ms.FromUnixTimeMs();
-        Assert.Equal(ms, dt.ToUnixTimeMs());
-        Assert.Equal(DateTimeKind.Utc, dt.Kind);
-    }
-
-    [Fact]
     public void Parse_And_TryParseInvariantUniversal_RespectUtc()
     {
         string input = "2023-01-02T03:04:05Z";
@@ -74,29 +56,5 @@ public class DateTimeExtensionsTests
     {
         DateTime dt = new DateTime(2000, 1, 1, 0, 0, 1, DateTimeKind.Utc).AddTicks(123);
         Assert.Equal(123, dt.SecondFragment());
-    }
-
-    [Fact]
-    public void HasExpired_WorksForDateTime()
-    {
-        DateTime past = DateTime.UtcNow.AddSeconds(-5);
-        DateTime future = DateTime.UtcNow.AddSeconds(5);
-        Assert.True(past.HasExpired());
-        Assert.False(future.HasExpired());
-        DateTime? nullable = null;
-        Assert.False(nullable.HasExpired(out TimeSpan? ttl));
-        Assert.Null(ttl);
-    }
-
-    [Fact]
-    public void HasExpired_WorksForDateTimeOffset()
-    {
-        DateTimeOffset? past = DateTimeOffset.UtcNow.AddMinutes(-1);
-        DateTimeOffset? future = DateTimeOffset.UtcNow.AddMinutes(1);
-        Assert.True(past.HasExpired());
-        Assert.False(future.HasExpired());
-        DateTimeOffset? nullable = null;
-        Assert.False(nullable.HasExpired(out TimeSpan? ttl2));
-        Assert.Null(ttl2);
     }
 }

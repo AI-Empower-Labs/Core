@@ -5,29 +5,6 @@ namespace System;
 
 public static class DateTimeExtensions
 {
-	public const long TicksPerMs = TimeSpan.TicksPerSecond / 1000;
-	public const long UnixEpoch = 621355968000000000L;
-
-	/// <summary>
-	///     The number of ticks per microsecond.
-	/// </summary>
-	public const int TicksPerMicrosecond = 10;
-
-	/// <summary>
-	///     The number of ticks per Nanosecond.
-	/// </summary>
-	public const int NanosecondsPerTick = 100;
-
-	private static readonly DateTime s_unixEpochDateTime = new(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-
-	private static DateTime? s_utcNow; // For unit testing purposes
-
-	public static DateTime UtcNow
-	{
-		get => s_utcNow ?? DateTime.UtcNow;
-		internal set => s_utcNow = value;
-	}
-
 	public static bool Between(this DateTime dateTime, DateTime from, DateTime to, bool inclusiveTo)
 	{
 		if (inclusiveTo)
@@ -96,33 +73,10 @@ public static class DateTimeExtensions
 		};
 	}
 
-	public static DateTime FromUnixTime(this double unixTime)
-	{
-		return s_unixEpochDateTime + TimeSpan.FromSeconds(unixTime);
-	}
-
-	public static DateTime FromUnixTimeMs(this double msSince1970)
-	{
-		long ticks = (long)(UnixEpoch + msSince1970 * TicksPerMs);
-		return new DateTime(ticks, DateTimeKind.Utc).ToUniversalTime();
-	}
-
 	public static DateTime Parse(string input)
 	{
 		return DateTime.Parse(input, CultureInfo.InvariantCulture,
 			DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
-	}
-
-	public static long ToUnixTime(this DateTime dateTime)
-	{
-		long epoch = (dateTime.ToUniversalTime().Ticks - UnixEpoch) / TimeSpan.TicksPerSecond;
-		return epoch;
-	}
-
-	public static long ToUnixTimeMs(this DateTime dateTime)
-	{
-		long epoch = (dateTime.Ticks - UnixEpoch) / TicksPerMs;
-		return epoch;
 	}
 
 	public static bool TryParseInvariantUniversal(string input, out DateTime dt)
@@ -135,67 +89,5 @@ public static class DateTimeExtensions
 	{
 		int fraction = (int)(self.Ticks % 10000000);
 		return fraction;
-	}
-
-	public static bool HasExpired(this DateTime? expiresAt,
-		DateTime? now = null)
-	{
-		return HasExpired(expiresAt, out TimeSpan? _, now);
-	}
-
-	public static bool HasExpired(this DateTimeOffset? expiresAt,
-		DateTimeOffset? now = null)
-	{
-		return HasExpired(expiresAt, out TimeSpan? _, now);
-	}
-
-	public static bool HasExpired(this DateTime? expiresAt,
-		out TimeSpan? timeToLive,
-		DateTime? now = null)
-	{
-		if (expiresAt.HasValue)
-		{
-			timeToLive = expiresAt.Value.Subtract(now.GetValueOrDefault(DateTime.UtcNow));
-			return timeToLive <= TimeSpan.Zero;
-		}
-
-		timeToLive = null;
-		return false;
-	}
-
-	public static bool HasExpired(this DateTimeOffset? expiresAt,
-		out TimeSpan? timeToLive,
-		DateTimeOffset? now = null)
-	{
-		if (expiresAt.HasValue)
-		{
-			timeToLive = expiresAt.Value.Subtract(now.GetValueOrDefault(DateTime.UtcNow));
-			return timeToLive <= TimeSpan.Zero;
-		}
-
-		timeToLive = null;
-		return false;
-	}
-
-	public static bool HasExpired(this DateTime expiresAt,
-		DateTime? now = null)
-	{
-		return HasExpired(expiresAt, out TimeSpan? _, now);
-	}
-
-	public static bool HasExpired(this DateTime expiresAt,
-		out TimeSpan? timeToLive,
-		DateTime? now = null)
-	{
-		timeToLive = expiresAt.Subtract(now.GetValueOrDefault(DateTime.UtcNow));
-		return timeToLive <= TimeSpan.Zero;
-	}
-
-	public static bool HasExpired(this DateTimeOffset expiresAt,
-		out TimeSpan? timeToLive,
-		DateTimeOffset? now = null)
-	{
-		timeToLive = expiresAt.Subtract(now.GetValueOrDefault(DateTime.UtcNow));
-		return timeToLive <= TimeSpan.Zero;
 	}
 }
