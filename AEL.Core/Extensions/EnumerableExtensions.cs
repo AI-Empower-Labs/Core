@@ -34,17 +34,15 @@ public static class EnumerableExtensions
 			.ToArray();
 	}
 
-#if NET10_0_OR_GREATER
-	extension(IEnumerable<string> source)
+	extension<T>(IEnumerable<T> source)
 	{
 		/// <summary>
-		/// Joins the strings in the sequence with the specified separator.
+		/// Joins the elements in the sequence with the specified separator.
 		/// </summary>
 		/// <param name="left"></param>
 		/// <param name="separator"></param>
 		/// <returns></returns>
-		public static string operator *(IEnumerable<string> left, string separator)
+		public static string operator *(IEnumerable<T> left, string separator)
 			=> string.Join(separator, left);
 	}
-#endif
 }
