@@ -53,8 +53,7 @@ public abstract class CronExecutionAsyncBackgroundService(
 			try
 			{
 				_logger.LogInformation("Service execution");
-				await ExecutePeriodicServiceTask()
-					.WithExceptionProtection(_logger, "Service execution failed!", cancellationToken: stoppingToken);
+				await ExecutePeriodicServiceTask();
 				_logger.LogInformation("Service execution finished");
 			}
 			finally
@@ -70,7 +69,8 @@ public abstract class CronExecutionAsyncBackgroundService(
 			Stopwatch stopwatch = Stopwatch.StartNew();
 			try
 			{
-				await Task.Run(() => ExecutePeriodically(stoppingToken), stoppingToken);
+				await Task.Run(() => ExecutePeriodically(stoppingToken)
+					.WithExceptionProtection(_logger, "Service execution failed!", cancellationToken: stoppingToken), stoppingToken);
 			}
 			finally
 			{
