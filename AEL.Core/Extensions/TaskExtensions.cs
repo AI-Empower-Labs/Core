@@ -45,7 +45,7 @@ public static class TaskExtensions
 		{
 			await task.WaitAsync(cancellationToken);
 		}
-		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+		catch (OperationCanceledException)
 		{
 			// Ignore
 		}
@@ -94,7 +94,7 @@ public static class TaskExtensions
 		{
 			return await task.WaitAsync(cancellationToken);
 		}
-		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+		catch (OperationCanceledException)
 		{
 			// Ignore
 		}
@@ -111,7 +111,7 @@ public static class TaskExtensions
 		{
 			await task.WaitAsync(cancellationToken);
 		}
-		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+		catch (OperationCanceledException)
 		{
 			// Ignore
 		}
@@ -131,7 +131,7 @@ public static class TaskExtensions
 		{
 			return await task.WaitAsync(cancellationToken);
 		}
-		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+		catch (OperationCanceledException)
 		{
 			// Ignore
 		}
