@@ -37,6 +37,7 @@ public static class FluentValidationExtensions
 		{
 			return ruleBuilder.MustBeOneOf(StringComparer.OrdinalIgnoreCase, allowedValues);
 		}
+
 		public IRuleBuilderOptions<T, string?> MustBeOneOf(StringComparer stringComparer, params string[] allowedValues)
 		{
 			return ruleBuilder

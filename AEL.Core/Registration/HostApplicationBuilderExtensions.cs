@@ -21,13 +21,11 @@ public static class HostApplicationBuilderExtensions
 			{
 				builder.Services.RegisterType(type, ServiceLifetime.Transient);
 			}
-
-			if (type.IsBasedOn(typeof(IScopedService)))
+			else if (type.IsBasedOn(typeof(IScopedService)))
 			{
 				builder.Services.RegisterType(type, ServiceLifetime.Scoped);
 			}
-
-			if (type.IsBasedOn(typeof(ISingletonService)))
+			else if (type.IsBasedOn(typeof(ISingletonService)))
 			{
 				builder.Services.RegisterType(type, ServiceLifetime.Singleton);
 			}
