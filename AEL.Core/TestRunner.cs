@@ -45,13 +45,9 @@ public static class TestRunner
 			},
 			build, null, cancellationToken, assemblies);
 		await host.StartAsync(cancellationToken);
-		TestRunner<THost> bag = new(host);
-		bag.DisposableBag.Add(startup);
-		bag.DisposableBag.Add(async () =>
-		{
-			await host.StopAsync(cancellationToken);
-			host.Dispose();
-		});
-		return bag;
+		TestRunner<THost> testRunner = new(host);
+		testRunner.DisposableBag.Add(startup);
+		testRunner.DisposableBag.Add(async () => await host.StopAsync(cancellationToken));
+		return testRunner;
 	}
 }
