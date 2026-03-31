@@ -95,5 +95,41 @@ public static class AsyncEnumerableExtensions
 				}
 			}
 		}
+
+		public async IAsyncEnumerable<TResult> ForEachParallel<TResult>(
+			Func<T, CancellationToken, Task<TResult>> selector,
+			int maxDegreeOfParallelism = 4,
+			[EnumeratorCancellation] CancellationToken cancellationToken = default)
+		{
+			Queue<Task<TResult>> queue = new();
+			using SemaphoreSlim semaphore = new(maxDegreeOfParallelism);
+
+			using CancellationTokenSource tokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+			await foreach (T item in enumerable.WithCancellation(cancellationToken))
+			{
+				await semaphore.WaitAsync(cancellationToken);
+
+				// Define the task
+				Task<TResult> task = Task.Run(async () =>
+				{
+					try { return await selector(item, tokenSource.Token); }
+					finally { semaphore.Release(); }
+				}, cancellationToken);
+
+				queue.Enqueue(task);
+
+				// While the oldest task in the queue is finished, yield it
+				while (queue.Count > 0 && queue.Peek().IsCompleted)
+				{
+					yield return await queue.Dequeue();
+				}
+			}
+
+			// Yield remaining tasks
+			while (queue.Count > 0)
+			{
+				yield return await queue.Dequeue();
+			}
+		}
 	}
 }
