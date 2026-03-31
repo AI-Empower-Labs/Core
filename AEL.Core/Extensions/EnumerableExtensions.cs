@@ -1,11 +1,15 @@
 ﻿// ReSharper disable once CheckNamespace
+
 namespace System.Linq;
 
 public static class EnumerableExtensions
 {
-	public static IEnumerable<T> WhereNotNull<T>(this IEnumerable<T?> enumerable) where T : notnull
+	extension<T>(IEnumerable<T?> enumerable) where T : notnull
 	{
-		return enumerable.OfType<T>();
+		public IEnumerable<T> WhereNotNull()
+		{
+			return enumerable.OfType<T>();
+		}
 	}
 
 	extension<T>(IEnumerable<T> source)

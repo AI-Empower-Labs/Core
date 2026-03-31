@@ -6,37 +6,41 @@ namespace AEL.Core.Extensions;
 
 public static class EnumExtensions
 {
-	public static bool TryParseEnumValue<T>(this string source, out T result)
-		where T : struct, Enum
+	extension(string source)
 	{
-		if (FastEnum.TryParse(source, true, out result))
+		public bool TryParseEnumValue<T>(out T result)
+			where T : struct, Enum
 		{
-			return true;
-		}
+			if (FastEnum.TryParse(source, true, out result))
+			{
+				return true;
+			}
 
-		FrozenDictionary<string, T> enumMemberLookup = GetEnumMemberLookup<T>();
-		return enumMemberLookup.TryGetValue(source, out result);
+			FrozenDictionary<string, T> enumMemberLookup = GetEnumMemberLookup<T>();
+			return enumMemberLookup.TryGetValue(source, out result);
+		}
 	}
 
-	public static T ParseEnumValue<T>(this string? source, T defaultValue)
-		where T : struct, Enum
+	extension(string? source)
 	{
-		if (string.IsNullOrEmpty(source))
+		public T ParseEnumValue<T>(T defaultValue)
+			where T : struct, Enum
 		{
-			return defaultValue;
-		}
+			if (string.IsNullOrEmpty(source))
+			{
+				return defaultValue;
+			}
 
-		return TryParseEnumValue(source, out T result) ? result : defaultValue;
+			return TryParseEnumValue(source, out T result) ? result : defaultValue;
+		}
 	}
 
 	public static string[] GetEnumNames<T>()
-		where T : struct, Enum
-	{
-		return FastEnum
+		where T : struct, Enum =>
+		FastEnum
 			.GetMembers<T>()
 			.Select(member => member.EnumMemberAttribute?.Value ?? member.Name)
 			.ToArray();
-	}
 
 	public static string GetEnumName<T>(this T value)
 		where T : struct, Enum
@@ -46,16 +50,14 @@ public static class EnumExtensions
 	}
 
 	public static string[] GetEnumNames<T>(T[] allowedValues)
-		where T : struct, Enum
-	{
-		return allowedValues
+		where T : struct, Enum =>
+		allowedValues
 			.Select(static @enum =>
 			{
 				Member<T>? member = FastEnum.GetMember(@enum);
 				return member?.EnumMemberAttribute?.Value ?? member?.Name ?? @enum.ToString();
 			})
 			.ToArray();
-	}
 
 	private static readonly IDictionary<Type, object> s_enumToValueMap = new Dictionary<Type, object>();
 	private static FrozenDictionary<string, T> GetEnumMemberLookup<T>()

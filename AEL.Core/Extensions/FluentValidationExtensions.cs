@@ -7,55 +7,66 @@ namespace FluentValidation;
 
 public static class FluentValidationExtensions
 {
-	public static IDictionary<string, string[]> ToDictionary(this IEnumerable<ValidationFailure> validationFailures)
+	extension(IEnumerable<ValidationFailure> validationFailures)
 	{
-		return validationFailures
-			.GroupBy(validationFailure => validationFailure.PropertyName)
-			.ToDictionary(
-				g => g.Key,
-				g => g.Select(static failure => failure.ErrorMessage).ToArray()
-			);
+		public IDictionary<string, string[]> ToDictionary()
+		{
+			return validationFailures
+				.GroupBy(validationFailure => validationFailure.PropertyName)
+				.ToDictionary(
+					g => g.Key,
+					g => g.Select(static failure => failure.ErrorMessage).ToArray()
+				);
+		}
 	}
 
-	public static IRuleBuilderOptions<T, Uri> MustBeAbsoluteUri<T>(this IRuleBuilder<T, Uri> ruleBuilder)
+	extension<T>(IRuleBuilder<T, Uri> ruleBuilder)
 	{
-		return ruleBuilder
-			.NotNull()
-			.Must(uri => uri?.IsAbsoluteUri is not null)
-			.WithMessage("Must be an absolute uri");
+		public IRuleBuilderOptions<T, Uri> MustBeAbsoluteUri()
+		{
+			return ruleBuilder
+				.NotNull()
+				.Must(uri => uri?.IsAbsoluteUri is not null)
+				.WithMessage("Must be an absolute uri");
+		}
 	}
 
-	public static IRuleBuilderOptions<T, string?> MustBeOneOf<T>(this IRuleBuilder<T, string?> ruleBuilder, params string[] allowedValues)
+	extension<T>(IRuleBuilder<T, string?> ruleBuilder)
 	{
-		return ruleBuilder.MustBeOneOf(StringComparer.OrdinalIgnoreCase, allowedValues);
+		public IRuleBuilderOptions<T, string?> MustBeOneOf(params string[] allowedValues)
+		{
+			return ruleBuilder.MustBeOneOf(StringComparer.OrdinalIgnoreCase, allowedValues);
+		}
+		public IRuleBuilderOptions<T, string?> MustBeOneOf(StringComparer stringComparer, params string[] allowedValues)
+		{
+			return ruleBuilder
+				.Must(s => s is not null && allowedValues.Any(oneOf => stringComparer.Equals(oneOf, s)))
+				.WithMessage($"Must be one of {string.Join(',', allowedValues)}");
+		}
 	}
 
-	public static IRuleBuilderOptions<T, string?> MustBeOneOf<T>(this IRuleBuilder<T, string?> ruleBuilder, StringComparer stringComparer, params string[] allowedValues)
+	extension<T, TOneOf>(IRuleBuilder<T, TOneOf?> ruleBuilder) where TOneOf : struct, Enum
 	{
-		return ruleBuilder
-			.Must(s => s is not null && allowedValues.Any(oneOf => stringComparer.Equals(oneOf, s)))
-			.WithMessage($"Must be one of {string.Join(',', allowedValues)}");
+		public IRuleBuilderOptions<T, TOneOf?> MustBeOneOf(params TOneOf[] allowedValues)
+		{
+			return ruleBuilder
+				.Must(s => s is not null && allowedValues.Any(oneOf => oneOf.Equals(s)))
+				.WithMessage($"Must be one of {string.Join(',', EnumExtensions.GetEnumNames(allowedValues))}");
+		}
 	}
 
-	public static IRuleBuilderOptions<T, TOneOf?> MustBeOneOf<T, TOneOf>(this IRuleBuilder<T, TOneOf?> ruleBuilder,
-		params TOneOf[] allowedValues)
-		where TOneOf : struct, Enum
+	extension<T>(IRuleBuilder<T, string> ruleBuilder)
 	{
-		return ruleBuilder
-			.Must(s => s is not null && allowedValues.Any(oneOf => oneOf.Equals(s)))
-			.WithMessage($"Must be one of {string.Join(',', EnumExtensions.GetEnumNames(allowedValues))}");
-	}
-
-	public static IRuleBuilderOptions<T, string> DefaultStringValidation<T>(this IRuleBuilder<T, string> ruleBuilder,
-		int minLength = 1,
-		int maxLength = 255)
-	{
-		return ruleBuilder
-			.NotEmpty()
-			.WithMessage("Cannot be empty")
-			.MinimumLength(minLength)
-			.WithMessage($"Must have a minimum length of {minLength}")
-			.MaximumLength(maxLength)
-			.WithMessage($"Cannot exceed length of {maxLength}");
+		public IRuleBuilderOptions<T, string> DefaultStringValidation(int minLength = 1,
+			int maxLength = 255)
+		{
+			return ruleBuilder
+				.NotEmpty()
+				.WithMessage("Cannot be empty")
+				.MinimumLength(minLength)
+				.WithMessage($"Must have a minimum length of {minLength}")
+				.MaximumLength(maxLength)
+				.WithMessage($"Cannot exceed length of {maxLength}");
+		}
 	}
 }

@@ -2,13 +2,16 @@ namespace System;
 
 public static class TimeSpanExtensions
 {
-	public static bool Between(this TimeSpan value, TimeSpan from, TimeSpan to, bool inclusiveTo = true)
+	extension(TimeSpan value)
 	{
-		if (inclusiveTo)
+		public bool Between(TimeSpan from, TimeSpan to, bool inclusiveTo = true)
 		{
-			return value >= from && value <= to;
-		}
+			if (inclusiveTo)
+			{
+				return value >= from && value <= to;
+			}
 
-		return value >= from && value < to;
+			return value >= from && value < to;
+		}
 	}
 }

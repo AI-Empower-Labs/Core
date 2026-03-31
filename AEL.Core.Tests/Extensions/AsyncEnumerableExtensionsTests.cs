@@ -15,26 +15,4 @@ public sealed class AsyncEnumerableExtensionsTests
 
 		Assert.Equal(3, batches.Count);
 	}
-
-	[Fact]
-	public async Task ForeachParallel_PreservesOrderOfSourceByIndex()
-	{
-		IEnumerable<int> source = Enumerable.Range(0, 10).ToArray();
-
-		List<int> results = [];
-		await foreach (int r in source.ForeachParallel(Work, maxDegreeOfParallelism: 3, cancellationToken: TestContext.Current.CancellationToken))
-		{
-			results.Add(r);
-		}
-
-		Assert.Equal(source.Select(i => i * i).ToArray(), results);
-		return;
-
-		async Task<int> Work(int i, CancellationToken ct)
-		{
-			// reverse sleep so later items finish earlier
-			await Task.Delay(5 * (10 - i), ct);
-			return i * i;
-		}
-	}
 }

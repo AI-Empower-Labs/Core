@@ -1,45 +1,61 @@
 // ReSharper disable once CheckNamespace
 
+using Microsoft.Extensions.Logging;
+
 namespace System.Threading.Tasks;
 
 public static class ValueTaskExtensions
 {
-	public static async ValueTask<T?> WithSilentCancellation<T>(this ValueTask<T> task, CancellationToken cancellationToken = default)
+	/// <param name="task">The task to wrap.</param>
+	extension(ValueTask task)
 	{
-		try
+		public async ValueTask WithExceptionProtection(ILogger logger,
+			string message,
+			CancellationToken cancellationToken = default)
 		{
-			return await task.AsTask().WaitAsync(cancellationToken);
+			await task
+				.AsTask()
+				.WithExceptionProtection(logger, message, cancellationToken);
 		}
-		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+		/// <summary>
+		/// Awaits the specified task and suppresses any exceptions that occur, optionally supporting cancellation.
+		/// </summary>
+		/// <param name="cancellationToken">The token that can be canceled to break out of the await.</param>
+		/// <returns>The wrapping task.</returns>
+		public async ValueTask WithSilentException(CancellationToken cancellationToken = default)
 		{
-			// Ignore
+			await task.AsTask().WithSilentException(cancellationToken);
 		}
-
-		return default;
 	}
 
-	/// <summary>
-	/// Awaits the specified task and suppresses any exceptions that occur, optionally supporting cancellation.
-	/// </summary>
 	/// <param name="task">The task to wrap.</param>
-	/// <param name="cancellationToken">The token that can be canceled to break out of the await.</param>
-	/// <returns>The wrapping task.</returns>
-	public static async ValueTask WithSilentException(this ValueTask task, CancellationToken cancellationToken = default)
+	extension<T>(ValueTask<T> task)
 	{
-		await task.AsTask().WithSilentException(cancellationToken);
-	}
+		public async ValueTask<T?> WithSilentCancellation(CancellationToken cancellationToken = default)
+		{
+			try
+			{
+				return await task.AsTask().WaitAsync(cancellationToken);
+			}
+			catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+			{
+				// Ignore
+			}
 
-	/// <summary>
-	/// Awaits the specified task and suppresses any exceptions that occur, optionally supporting cancellation.
-	/// </summary>
-	/// <param name="task">The task to wrap.</param>
-	/// <param name="defaultValue"></param>
-	/// <param name="cancellationToken">The token that can be canceled to break out of the await.</param>
-	/// <returns>The wrapping task.</returns>
-	public static async ValueTask<T> WithSilentException<T>(this ValueTask<T> task, T defaultValue, CancellationToken cancellationToken = default)
-	{
-		return await task
-			.AsTask()
-			.WithSilentException(defaultValue, cancellationToken);
+			return default;
+		}
+
+		/// <summary>
+		/// Awaits the specified task and suppresses any exceptions that occur, optionally supporting cancellation.
+		/// </summary>
+		/// <param name="defaultValue"></param>
+		/// <param name="cancellationToken">The token that can be canceled to break out of the await.</param>
+		/// <returns>The wrapping task.</returns>
+		public async ValueTask<T> WithSilentException(T defaultValue, CancellationToken cancellationToken = default)
+		{
+			return await task
+				.AsTask()
+				.WithSilentException(defaultValue, cancellationToken);
+		}
 	}
 }

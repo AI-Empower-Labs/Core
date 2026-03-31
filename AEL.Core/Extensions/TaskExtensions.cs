@@ -7,179 +7,171 @@ public static class TaskExtensions
 {
 	private static readonly Action<Task> s_ignoreTaskContinuation = t => _ = t.Exception;
 
-	/// <summary>
-	/// Wraps a task with one that will complete as canceled based on a cancellation token,
-	/// allowing someone to await a task but be able to break out early by cancelling the token.
-	/// </summary>
+	/// <param name="task">The task to wrap.</param>
+	extension(Task task)
+	{
+		/// <summary>
+		/// Wraps a task with one that will complete as cancelled based on a cancellation token,
+		/// allowing someone to await a task but be able to break out early by cancelling the token.
+		/// </summary>
+		/// <param name="cancellationToken">The token that can be canceled to break out of the await.</param>
+		/// <returns>The wrapping task.</returns>
+		public Task WithCancellation(CancellationToken cancellationToken)
+		{
+			return task.WaitAsync(cancellationToken);
+		}
+
+		/// <summary>
+		/// Wraps a task with one that will complete as cancelled based on a cancellation token,
+		/// allowing someone to await a task but be able to break out early by cancelling the token.
+		/// </summary>
+		/// <param name="cancellationToken">The token that can be canceled to break out of the await.</param>
+		/// <returns>The wrapping task.</returns>
+		public async Task WithSilentCancellation(CancellationToken cancellationToken = default)
+		{
+			try
+			{
+				await task.WaitAsync(cancellationToken);
+			}
+			catch (OperationCanceledException)
+			{
+				// Ignore
+			}
+		}
+
+		/// <summary>
+		/// Awaits the specified task and suppresses any exceptions that occur, optionally supporting cancellation.
+		/// </summary>
+		/// <param name="cancellationToken">The token that can be canceled to break out of the await.</param>
+		/// <returns>The wrapping task.</returns>
+		public async Task WithSilentException(CancellationToken cancellationToken = default)
+		{
+			try
+			{
+				await task.WaitAsync(cancellationToken);
+			}
+			catch
+			{
+				// Ignore
+			}
+		}
+
+		public async Task WithExceptionProtection(ILogger logger,
+			string message,
+			CancellationToken cancellationToken = default)
+		{
+			try
+			{
+				await task.WaitAsync(cancellationToken);
+			}
+			catch (OperationCanceledException)
+			{
+				// Ignore
+			}
+			catch (Exception exception)
+			{
+				// ReSharper disable once TemplateIsNotCompileTimeConstantProblem
+				logger.LogError(exception, message);
+			}
+		}
+
+		public async Task WithTimeout(TimeSpan timeout,
+			bool continueOnCapturedContext = true,
+			CancellationToken cancellationToken = default)
+		{
+			try
+			{
+				await task.WaitAsync(timeout, cancellationToken).ConfigureAwait(continueOnCapturedContext);
+			}
+			catch (TimeoutException)
+			{
+				throw new OperationCanceledException();
+			}
+		}
+	}
+
+	/// <param name="task">The task to wrap.</param>
 	/// <typeparam name="T">The type of value returned by the task.</typeparam>
-	/// <param name="task">The task to wrap.</param>
-	/// <param name="cancellationToken">The token that can be canceled to break out of the await.</param>
-	/// <returns>The wrapping task.</returns>
-	public static Task<T> WithCancellation<T>(this Task<T> task, CancellationToken cancellationToken)
+	extension<T>(Task<T> task)
 	{
-		return task.WaitAsync(cancellationToken);
-	}
+		/// <summary>
+		/// Awaits the specified task and suppresses any exceptions that occur, optionally supporting cancellation.
+		/// </summary>
+		/// <param name="defaultValue"></param>
+		/// <param name="cancellationToken">The token that can be canceled to break out of the await.</param>
+		/// <returns>The wrapping task.</returns>
+		public async Task<T> WithSilentException(T defaultValue, CancellationToken cancellationToken = default)
+		{
+			try
+			{
+				return await task.WaitAsync(cancellationToken);
+			}
+			catch
+			{
+				return defaultValue;
+			}
+		}
 
-	/// <summary>
-	/// Wraps a task with one that will complete as cancelled based on a cancellation token,
-	/// allowing someone to await a task but be able to break out early by cancelling the token.
-	/// </summary>
-	/// <param name="task">The task to wrap.</param>
-	/// <param name="cancellationToken">The token that can be canceled to break out of the await.</param>
-	/// <returns>The wrapping task.</returns>
-	public static Task WithCancellation(this Task task, CancellationToken cancellationToken)
-	{
-		return task.WaitAsync(cancellationToken);
-	}
+		public async Task<T?> WithSilentCancellation(CancellationToken cancellationToken = default)
+		{
+			try
+			{
+				return await task.WaitAsync(cancellationToken);
+			}
+			catch (OperationCanceledException)
+			{
+				// Ignore
+			}
 
-	/// <summary>
-	/// Wraps a task with one that will complete as cancelled based on a cancellation token,
-	/// allowing someone to await a task but be able to break out early by cancelling the token.
-	/// </summary>
-	/// <param name="task">The task to wrap.</param>
-	/// <param name="cancellationToken">The token that can be canceled to break out of the await.</param>
-	/// <returns>The wrapping task.</returns>
-	public static async Task WithSilentCancellation(this Task task, CancellationToken cancellationToken = default)
-	{
-		try
-		{
-			await task.WaitAsync(cancellationToken);
+			return default;
 		}
-		catch (OperationCanceledException)
-		{
-			// Ignore
-		}
-	}
 
-	/// <summary>
-	/// Awaits the specified task and suppresses any exceptions that occur, optionally supporting cancellation.
-	/// </summary>
-	/// <param name="task">The task to wrap.</param>
-	/// <param name="cancellationToken">The token that can be canceled to break out of the await.</param>
-	/// <returns>The wrapping task.</returns>
-	public static async Task WithSilentException(this Task task, CancellationToken cancellationToken = default)
-	{
-		try
+		/// <summary>
+		/// Wraps a task with one that will complete as canceled based on a cancellation token,
+		/// allowing someone to await a task but be able to break out early by cancelling the token.
+		/// </summary>
+		/// <param name="cancellationToken">The token that can be canceled to break out of the await.</param>
+		/// <returns>The wrapping task.</returns>
+		public Task<T> WithCancellation(CancellationToken cancellationToken)
 		{
-			await task.WaitAsync(cancellationToken);
+			return task.WaitAsync(cancellationToken);
 		}
-		catch
-		{
-			// Ignore
-		}
-	}
 
-	/// <summary>
-	/// Awaits the specified task and suppresses any exceptions that occur, optionally supporting cancellation.
-	/// </summary>
-	/// <param name="task">The task to wrap.</param>
-	/// <param name="defaultValue"></param>
-	/// <param name="cancellationToken">The token that can be canceled to break out of the await.</param>
-	/// <returns>The wrapping task.</returns>
-	public static async Task<T> WithSilentException<T>(this Task<T> task, T defaultValue, CancellationToken cancellationToken = default)
-	{
-		try
+		public async Task<T> WithTimeout(TimeSpan timeout,
+			CancellationToken cancellationToken = default)
 		{
-			return await task.WaitAsync(cancellationToken);
-		}
-		catch
-		{
-			return defaultValue;
+			try
+			{
+				return await task.WaitAsync(timeout, cancellationToken);
+			}
+			catch (TimeoutException)
+			{
+				throw new OperationCanceledException();
+			}
 		}
 	}
 
-	public static async Task<T?> WithSilentCancellation<T>(this Task<T> task, CancellationToken cancellationToken = default)
+	extension<T>(Task<T> task) where T : class
 	{
-		try
+		public async Task<T?> WithExceptionProtection(ILogger logger,
+			string message,
+			CancellationToken cancellationToken = default)
 		{
-			return await task.WaitAsync(cancellationToken);
-		}
-		catch (OperationCanceledException)
-		{
-			// Ignore
-		}
+			try
+			{
+				return await task.WaitAsync(cancellationToken);
+			}
+			catch (OperationCanceledException)
+			{
+				// Ignore
+			}
+			catch (Exception exception)
+			{
+				// ReSharper disable once TemplateIsNotCompileTimeConstantProblem
+				logger.LogError(exception, message);
+			}
 
-		return default;
-	}
-
-	public static async Task WithExceptionProtection(this Task task,
-		ILogger logger,
-		string message,
-		CancellationToken cancellationToken = default)
-	{
-		try
-		{
-			await task.WaitAsync(cancellationToken);
-		}
-		catch (OperationCanceledException)
-		{
-			// Ignore
-		}
-		catch (Exception exception)
-		{
-			// ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-			logger.LogError(exception, message);
-		}
-	}
-
-	public static async Task<T?> WithExceptionProtection<T>(this Task<T> task,
-		ILogger logger,
-		string message,
-		CancellationToken cancellationToken = default) where T : class
-	{
-		try
-		{
-			return await task.WaitAsync(cancellationToken);
-		}
-		catch (OperationCanceledException)
-		{
-			// Ignore
-		}
-		catch (Exception exception)
-		{
-			// ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-			logger.LogError(exception, message);
-		}
-
-		return null;
-	}
-
-	public static async ValueTask WithExceptionProtection(this ValueTask task,
-		ILogger logger,
-		string message,
-		CancellationToken cancellationToken = default)
-	{
-		await task
-			.AsTask()
-			.WithExceptionProtection(logger, message, cancellationToken);
-	}
-
-	public static async Task<T> WithTimeout<T>(this Task<T> task,
-		TimeSpan timeout,
-		CancellationToken cancellationToken = default)
-	{
-		try
-		{
-			return await task.WaitAsync(timeout, cancellationToken);
-		}
-		catch (TimeoutException)
-		{
-			throw new OperationCanceledException();
-		}
-	}
-
-	public static async Task WithTimeout(this Task task,
-		TimeSpan timeout,
-		bool continueOnCapturedContext = true,
-		CancellationToken cancellationToken = default)
-	{
-		try
-		{
-			await task.WaitAsync(timeout, cancellationToken).ConfigureAwait(continueOnCapturedContext);
-		}
-		catch (TimeoutException)
-		{
-			throw new OperationCanceledException();
+			return null;
 		}
 	}
 
@@ -202,8 +194,11 @@ public static class TaskExtensions
 		}
 	}
 
-	public static Task<T> ToTask<T>(this T result)
+	extension<T>(T result)
 	{
-		return Task.FromResult(result);
+		public Task<T> ToTask()
+		{
+			return Task.FromResult(result);
+		}
 	}
 }

@@ -8,157 +8,91 @@ namespace System.Linq;
 
 public static class AsyncEnumerableExtensions
 {
-	public static async IAsyncEnumerable<T> WhereNotNull<T>(this IAsyncEnumerable<T?> enumerable) where T : notnull
+	extension<T>(IAsyncEnumerable<T?> enumerable) where T : notnull
 	{
-		await foreach (T? t in enumerable)
+		public async IAsyncEnumerable<T> WhereNotNull()
 		{
-			if (t is not null)
+			await foreach (T? t in enumerable)
 			{
-				yield return t;
-			}
-		}
-	}
-
-	public static async IAsyncEnumerable<ICollection<T>> Batch<T>(this IAsyncEnumerable<T> enumerable,
-		int batchSize,
-		[EnumeratorCancellation] CancellationToken cancellationToken = default)
-	{
-		Channel<T> channel = Channel.CreateBounded<T>(batchSize);
-		Task producerTask = Producer();
-		await foreach (ICollection<T> collection in channel.ReadAllBatch(batchSize, cancellationToken))
-		{
-			yield return collection;
-		}
-
-		await producerTask;
-
-		async Task Producer()
-		{
-			try
-			{
-				await foreach (T t in enumerable.WithCancellation(cancellationToken))
+				if (t is not null)
 				{
-					await channel.Writer.WriteAsync(t, cancellationToken);
+					yield return t;
 				}
 			}
-			catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-			{
-				// Ignore
-			}
-			catch (Exception ex)
-			{
-				channel.Writer.TryComplete(ex);
-			}
-			finally
-			{
-				channel.Writer.TryComplete();
-			}
 		}
 	}
 
-	public static async IAsyncEnumerable<ICollection<T>> BatchWithDrain<T>(this IAsyncEnumerable<T> enumerable,
-		int batchSize,
-		[EnumeratorCancellation] CancellationToken cancellationToken = default)
+	extension<T>(IAsyncEnumerable<T> enumerable)
 	{
-		Channel<T> channel = Channel.CreateBounded<T>(batchSize);
-		Task producerTask = Producer();
-		await foreach (ICollection<T> collection in channel.ReadAllBatchDrain(batchSize, cancellationToken))
+		public async IAsyncEnumerable<ICollection<T>> Batch(int batchSize,
+			[EnumeratorCancellation] CancellationToken cancellationToken = default)
 		{
-			yield return collection;
-		}
-
-		await producerTask;
-
-		async Task Producer()
-		{
-			try
+			Channel<T> channel = Channel.CreateBounded<T>(batchSize);
+			Task producerTask = Producer();
+			await foreach (ICollection<T> collection in channel.ReadAllBatch(batchSize, cancellationToken))
 			{
-				await foreach (T t in enumerable.WithCancellation(cancellationToken))
+				yield return collection;
+			}
+
+			await producerTask;
+
+			async Task Producer()
+			{
+				try
 				{
-					await channel.Writer.WriteAsync(t, cancellationToken);
-				}
-			}
-			catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-			{
-				// Ignore
-			}
-			catch (Exception ex)
-			{
-				channel.Writer.TryComplete(ex);
-			}
-			finally
-			{
-				channel.Writer.TryComplete();
-			}
-		}
-	}
-
-	public static async IAsyncEnumerable<TResult> ForeachParallel<T, TResult>(
-		this IEnumerable<T> source,
-		Func<T, CancellationToken, Task<TResult>> func,
-		int? maxDegreeOfParallelism = null,
-		[EnumeratorCancellation] CancellationToken cancellationToken = default)
-	{
-		Channel<(int Index, TResult Result)> channel = Channel.CreateUnbounded<(int Index, TResult Result)>(
-			new UnboundedChannelOptions { SingleReader = true, SingleWriter = false });
-		Task producer = Task.Run(Producer, cancellationToken);
-		SortedDictionary<int, TResult> resultDict = new();
-		int yielded = 0;
-		await foreach ((int index, TResult result) in channel.Reader.ReadAllAsync(cancellationToken))
-		{
-			resultDict[index] = result;
-			while (resultDict.TryGetValue(yielded, out TResult? nextResult))
-			{
-				yield return nextResult;
-				resultDict.Remove(yielded);
-				yielded++;
-			}
-		}
-
-		await producer;
-		yield break;
-
-		// Producer task pushes results into the channel as they are completed
-		async Task? Producer()
-		{
-			int degree = maxDegreeOfParallelism ?? Math.Max(1, Environment.ProcessorCount / 4);
-			SemaphoreSlim throttler = new(degree);
-			int idx = 0;
-			List<Task> tasks = [];
-			try
-			{
-				foreach (T item in source)
-				{
-					await throttler.WaitAsync(cancellationToken);
-					int currentIndex = idx++;
-					Task task = Task.Run(async () =>
+					await foreach (T t in enumerable.WithCancellation(cancellationToken))
 					{
-						try
-						{
-							TResult result = await func(item, cancellationToken);
-							await channel.Writer.WriteAsync((currentIndex, result), cancellationToken);
-						}
-						finally
-						{
-							throttler.Release();
-						}
-					}, cancellationToken);
-					tasks.Add(task);
+						await channel.Writer.WriteAsync(t, cancellationToken);
+					}
 				}
+				catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+				{
+					// Ignore
+				}
+				catch (Exception ex)
+				{
+					channel.Writer.TryComplete(ex);
+				}
+				finally
+				{
+					channel.Writer.TryComplete();
+				}
+			}
+		}
 
-				await Task.WhenAll(tasks);
-			}
-			catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+		public async IAsyncEnumerable<ICollection<T>> BatchWithDrain(int batchSize,
+			[EnumeratorCancellation] CancellationToken cancellationToken = default)
+		{
+			Channel<T> channel = Channel.CreateBounded<T>(batchSize);
+			Task producerTask = Producer();
+			await foreach (ICollection<T> collection in channel.ReadAllBatchDrain(batchSize, cancellationToken))
 			{
-				// Ignore
+				yield return collection;
 			}
-			catch (Exception ex)
+
+			await producerTask;
+
+			async Task Producer()
 			{
-				channel.Writer.Complete(ex);
-			}
-			finally
-			{
-				channel.Writer.TryComplete();
+				try
+				{
+					await foreach (T t in enumerable.WithCancellation(cancellationToken))
+					{
+						await channel.Writer.WriteAsync(t, cancellationToken);
+					}
+				}
+				catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+				{
+					// Ignore
+				}
+				catch (Exception ex)
+				{
+					channel.Writer.TryComplete(ex);
+				}
+				finally
+				{
+					channel.Writer.TryComplete();
+				}
 			}
 		}
 	}

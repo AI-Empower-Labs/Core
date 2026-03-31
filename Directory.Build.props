@@ -15,7 +15,7 @@
 		<RepositoryType>git</RepositoryType>
 		<EnableNETAnalyzers>true</EnableNETAnalyzers>
 		<NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
-		<TargetFrameworks>net9.0;net10.0</TargetFrameworks>
+		<TargetFramework>net10.0</TargetFramework>
 		<ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
 		<RuntimeIdentifier>linux-x64</RuntimeIdentifier>
 	</PropertyGroup>

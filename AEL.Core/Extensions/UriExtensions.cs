@@ -2,7 +2,6 @@
 
 namespace System.Linq;
 
-#if NET10_0_OR_GREATER
 public static class UriExtensions
 {
 	/// <param name="uri">The source URI.</param>
@@ -76,4 +75,3 @@ public static class UriExtensions
 		}
 	}
 }
-#endif

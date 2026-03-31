@@ -5,102 +5,100 @@ namespace AEL.Core.Extensions;
 
 public static class ChannelExtensions
 {
-	public static async IAsyncEnumerable<T> ReadAllDrain<T>(
-		this Channel<T> channel,
-		[EnumeratorCancellation] CancellationToken cancellationToken = default)
+	extension<T>(Channel<T> channel)
 	{
-		while (await channel.Reader
-			.WaitToReadAsync(cancellationToken)
-			.WithSilentCancellation(cancellationToken))
+		public async IAsyncEnumerable<T> ReadAllDrain([EnumeratorCancellation] CancellationToken cancellationToken = default)
 		{
+			while (await channel.Reader
+				.WaitToReadAsync(cancellationToken)
+				.WithSilentCancellation(cancellationToken))
+			{
+				while (channel.Reader.TryRead(out T? item))
+				{
+					yield return item;
+				}
+			}
+
+			// Drain queue
 			while (channel.Reader.TryRead(out T? item))
 			{
 				yield return item;
 			}
 		}
 
-		// Drain queue
-		while (channel.Reader.TryRead(out T? item))
+		public async IAsyncEnumerable<ICollection<T>> ReadAllBatchDrain(
+			int maxBatchSize = 10,
+			[EnumeratorCancellation] CancellationToken cancellationToken = default)
 		{
-			yield return item;
-		}
-	}
+			if (maxBatchSize <= 0)
+			{
+				throw new ArgumentOutOfRangeException(nameof(maxBatchSize), "maxBatchSize must be greater than 0.");
+			}
 
-	public static async IAsyncEnumerable<ICollection<T>> ReadAllBatchDrain<T>(
-		this Channel<T> channel,
-		int maxBatchSize = 10,
-		[EnumeratorCancellation] CancellationToken cancellationToken = default)
-	{
-		if (maxBatchSize <= 0)
-		{
-			throw new ArgumentOutOfRangeException(nameof(maxBatchSize), "maxBatchSize must be greater than 0.");
-		}
+			while (await channel.Reader
+				.WaitToReadAsync(cancellationToken)
+				.WithSilentCancellation(cancellationToken))
+			{
+				foreach (ICollection<T> batch in MakeBatches())
+				{
+					yield return batch.ToArray();
+				}
+			}
 
-		while (await channel.Reader
-			.WaitToReadAsync(cancellationToken)
-			.WithSilentCancellation(cancellationToken))
-		{
+			// Empty queue
 			foreach (ICollection<T> batch in MakeBatches())
 			{
 				yield return batch.ToArray();
 			}
+
+			yield break;
+
+			IEnumerable<ICollection<T>> MakeBatches()
+			{
+				List<T> batch = new(maxBatchSize);
+				while (channel.Reader.TryRead(out T? item))
+				{
+					batch.Add(item);
+					if (batch.Count >= maxBatchSize)
+					{
+						yield return batch.ToArray();
+						batch.Clear();
+					}
+				}
+
+				if (batch.Count > 0)
+				{
+					yield return batch.ToArray();
+				}
+			}
 		}
 
-		// Empty queue
-		foreach (ICollection<T> batch in MakeBatches())
+		public async IAsyncEnumerable<ICollection<T>> ReadAllBatch(int maxBatchSize = 10,
+			[EnumeratorCancellation] CancellationToken cancellationToken = default)
 		{
-			yield return batch.ToArray();
-		}
+			if (maxBatchSize <= 0)
+			{
+				throw new ArgumentOutOfRangeException(nameof(maxBatchSize), "maxBatchSize must be greater than 0.");
+			}
 
-		yield break;
-
-		IEnumerable<ICollection<T>> MakeBatches()
-		{
 			List<T> batch = new(maxBatchSize);
-			while (channel.Reader.TryRead(out T? item))
+			while (await channel.Reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
 			{
-				batch.Add(item);
-				if (batch.Count >= maxBatchSize)
+				batch.Clear();
+				while (channel.Reader.TryRead(out T? item))
+				{
+					batch.Add(item);
+					if (batch.Count >= maxBatchSize)
+					{
+						yield return batch.ToArray();
+						batch.Clear();
+					}
+				}
+
+				if (batch.Count > 0)
 				{
 					yield return batch.ToArray();
-					batch.Clear();
 				}
-			}
-
-			if (batch.Count > 0)
-			{
-				yield return batch.ToArray();
-			}
-		}
-	}
-
-	public static async IAsyncEnumerable<ICollection<T>> ReadAllBatch<T>(
-		this Channel<T> channel,
-		int maxBatchSize = 10,
-		[EnumeratorCancellation] CancellationToken cancellationToken = default)
-	{
-		if (maxBatchSize <= 0)
-		{
-			throw new ArgumentOutOfRangeException(nameof(maxBatchSize), "maxBatchSize must be greater than 0.");
-		}
-
-		List<T> batch = new(maxBatchSize);
-		while (await channel.Reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
-		{
-			batch.Clear();
-			while (channel.Reader.TryRead(out T? item))
-			{
-				batch.Add(item);
-				if (batch.Count >= maxBatchSize)
-				{
-					yield return batch.ToArray();
-					batch.Clear();
-				}
-			}
-
-			if (batch.Count > 0)
-			{
-				yield return batch.ToArray();
 			}
 		}
 	}

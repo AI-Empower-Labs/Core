@@ -1,5 +1,3 @@
-#if NET10_0_OR_GREATER
-
 // ReSharper disable once CheckNamespace
 namespace System;
 
@@ -15,4 +13,3 @@ public static class DisposableExtensions
 		public static void DisposeWith(AsyncDisposableBag disposableBag) => disposableBag.Add(disposableBag);
 	}
 }
-#endif

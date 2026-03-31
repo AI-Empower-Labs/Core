@@ -3,19 +3,22 @@ namespace System;
 
 public static class DateTimeResolutionExtensions
 {
-	public static TimeSpan ToTimeSpan(this DateTimeResolution dateTimeResolution)
+	extension(DateTimeResolution dateTimeResolution)
 	{
-		return dateTimeResolution switch
+		public TimeSpan ToTimeSpan()
 		{
-			DateTimeResolution.Millisecond => TimeSpan.FromMilliseconds(1),
-			DateTimeResolution.Second => TimeSpan.FromSeconds(1),
-			DateTimeResolution.Minute => TimeSpan.FromMinutes(1),
-			DateTimeResolution.Hour => TimeSpan.FromHours(1),
-			DateTimeResolution.Day => TimeSpan.FromDays(1),
-			DateTimeResolution.Month => TimeSpan.FromDays(30),
-			DateTimeResolution.Year => TimeSpan.FromDays(365),
-			_ => throw new ArgumentOutOfRangeException(nameof(dateTimeResolution), dateTimeResolution, null)
-		};
+			return dateTimeResolution switch
+			{
+				DateTimeResolution.Millisecond => TimeSpan.FromMilliseconds(1),
+				DateTimeResolution.Second => TimeSpan.FromSeconds(1),
+				DateTimeResolution.Minute => TimeSpan.FromMinutes(1),
+				DateTimeResolution.Hour => TimeSpan.FromHours(1),
+				DateTimeResolution.Day => TimeSpan.FromDays(1),
+				DateTimeResolution.Month => TimeSpan.FromDays(30),
+				DateTimeResolution.Year => TimeSpan.FromDays(365),
+				_ => throw new ArgumentOutOfRangeException(nameof(dateTimeResolution), dateTimeResolution, null)
+			};
+		}
 	}
 
 	/// <summary>

@@ -32,7 +32,6 @@ public class EnumerableExtensionsTests
 		Assert.Equal(new[] { "x", "y" }, list);
 	}
 
-#if NET10_0_OR_GREATER
 	[Fact]
 	public void JoinOperator_BasicJoin()
 	{
@@ -64,5 +63,4 @@ public class EnumerableExtensionsTests
 		string result = items * " - ";
 		Assert.Equal("x - y", result);
 	}
-#endif
 }

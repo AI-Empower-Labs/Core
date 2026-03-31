@@ -4,13 +4,16 @@ namespace System;
 
 public static class NumberExtensions
 {
-	public static bool Between<T>(this T value, T from, T to, bool inclusiveTo = true) where T : INumber<T>
+	extension<T>(T value) where T : INumber<T>
 	{
-		if (inclusiveTo)
+		public bool Between(T from, T to, bool inclusiveTo = true)
 		{
-			return value >= from && value <= to;
-		}
+			if (inclusiveTo)
+			{
+				return value >= from && value <= to;
+			}
 
-		return value >= from && value < to;
+			return value >= from && value < to;
+		}
 	}
 }

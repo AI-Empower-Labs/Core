@@ -6,37 +6,43 @@ namespace System.Text.Json;
 
 public static class JsonElementExtensions
 {
-	public static T? SafeDeserialize<T>(this JsonElement jsonElement, ILogger? logger)
+	extension(JsonElement jsonElement)
 	{
-		try
+		public T? SafeDeserialize<T>(ILogger? logger)
 		{
-			return jsonElement.Deserialize<T>();
-		}
-		catch (Exception e)
-		{
+			try
+			{
+				return jsonElement.Deserialize<T>();
+			}
+			catch (Exception e)
+			{
 #if DEBUG
-			Diagnostics.Debug.WriteLine("Error while deserializing JSON element: {Json}", jsonElement.ToString());
+				Diagnostics.Debug.WriteLine("Error while deserializing JSON element: {Json}", jsonElement.ToString());
 #else
 			logger?.LogError(e, "Error while deserializing JSON element: {Json}", jsonElement);
 #endif
-			return default;
+				return default;
+			}
 		}
 	}
 
-	public static T? SafeDeserialize<T>(this JsonDocument jsonDocument, ILogger? logger)
+	extension(JsonDocument jsonDocument)
 	{
-		try
+		public T? SafeDeserialize<T>(ILogger? logger)
 		{
-			return jsonDocument.Deserialize<T>();
-		}
-		catch (Exception e)
-		{
+			try
+			{
+				return jsonDocument.Deserialize<T>();
+			}
+			catch (Exception e)
+			{
 #if DEBUG
-			Diagnostics.Debug.WriteLine("Error while deserializing JSON element: {Json}", jsonDocument.RootElement.ToString());
+				Diagnostics.Debug.WriteLine("Error while deserializing JSON element: {Json}", jsonDocument.RootElement.ToString());
 #else
 			logger?.LogError(e, "Error while deserializing JSON element: {Json}", jsonDocument.RootElement);
 #endif
-			return default;
+				return default;
+			}
 		}
 	}
 }

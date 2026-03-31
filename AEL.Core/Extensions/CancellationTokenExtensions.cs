@@ -2,8 +2,11 @@ namespace System.Threading;
 
 public static class CancellationTokenExtensions
 {
-	public static async Task AwaitCancellation(this CancellationToken cancellationToken)
+	extension(CancellationToken cancellationToken)
 	{
-		await Task.Delay(Timeout.Infinite, cancellationToken).WithSilentCancellation(cancellationToken);
+		public async Task AwaitCancellation()
+		{
+			await Task.Delay(Timeout.Infinite, cancellationToken).WithSilentCancellation(cancellationToken);
+		}
 	}
 }
