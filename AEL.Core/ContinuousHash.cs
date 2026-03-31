@@ -3,11 +3,11 @@ using System.Text;
 
 namespace AEL.Core;
 
-public sealed class ContinuesHash : DisposableBase
+public sealed class ContinuousHash : DisposableBase
 {
 	private readonly MD5 _md5 = MD5.Create();
 
-	public ContinuesHash()
+	public ContinuousHash()
 	{
 		DisposableBag.Add(_md5);
 	}
