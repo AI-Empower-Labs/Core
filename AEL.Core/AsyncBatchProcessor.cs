@@ -79,8 +79,7 @@ public abstract class AsyncBatchProcessor<TIn> : AsyncBackgroundService
 	/// <returns>
 	/// A task that represents the asynchronous processing operation and contains the resulting output of the task.
 	/// </returns>
-	protected async Task Process(TIn value,
-		CancellationToken cancellationToken = default)
+	protected async Task Process(TIn value, CancellationToken cancellationToken = default)
 	{
 		if (cancellationToken.IsCancellationRequested)
 		{
@@ -109,6 +108,8 @@ public abstract class AsyncBatchProcessor<TIn> : AsyncBackgroundService
 		{
 			tcs.TrySetCanceled(cancellationToken);
 		}
+
+		await tcs.Task;
 	}
 
 	/// <summary>
