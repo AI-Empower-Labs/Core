@@ -36,6 +36,20 @@ public sealed class Disposables
 		return new AsyncDisposableBag();
 	}
 
+	public static IAsyncDisposable CreateAsync(Func<CancellationToken, Task> func)
+	{
+		AsyncDisposableBag result = new();
+		CancellationTokenSource cancellationTokenSource = new();
+		result.Add(() =>
+		{
+			cancellationTokenSource.Cancel();
+			cancellationTokenSource.Dispose();
+		});
+		CancellationToken cancellationToken = cancellationTokenSource.Token;
+		result.Add(() => func(cancellationToken));
+		return result;
+	}
+
 	/// <summary>
 	/// Combines two instances of IDisposable into a single IDisposable.
 	/// </summary>
