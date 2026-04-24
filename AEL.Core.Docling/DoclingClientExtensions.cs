@@ -1,7 +1,10 @@
+using System.IO.Compression;
+
 using AEL.Core.Docling.Gamma;
 using AEL.Core.Docling.Gamma.Models;
 using AEL.Core.Docling.Gamma.V1.ConvertNamespace.Source;
 
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.Logging;
 
 namespace AEL.Core.Docling;
@@ -10,10 +13,11 @@ public static class DoclingClientExtensions
 {
 	extension(DoclingClient doclingClient)
 	{
-		public async Task<string?> ExtractMarkdown(ILogger logger,
+		public async Task<string[]> ExtractMarkdown(
+			string fileName,
 			BinaryData binaryData,
-			string fileAttachmentName,
 			TimeSpan timeout,
+			ILogger logger,
 			CancellationToken cancellationToken)
 		{
 			// Use a linked token with a bounded timeout so a canceled Wolverine
@@ -23,38 +27,85 @@ public static class DoclingClientExtensions
 
 			try
 			{
-				return await doclingClient.ExtractMarkdownInternal(binaryData, doclingCts.Token);
+				return await doclingClient.ExtractMarkdownInternal(fileName, binaryData, logger, doclingCts.Token);
 			}
 			catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
 			{
-				logger.LogWarning(
-					"Docling extraction timed out for attachment {AttachmentName}", fileAttachmentName);
+				logger.LogError("Docling extraction timed out for attachment {AttachmentName}", fileName);
 			}
 			catch (HttpRequestException ex)
 			{
-				logger.LogWarning(ex,
-					"Docling extraction failed for attachment {AttachmentName}", fileAttachmentName);
+				logger.LogError(ex, "Docling extraction failed for attachment {AttachmentName}", fileName);
 			}
 			catch (IOException ex)
 			{
-				logger.LogWarning(ex,
-					"Docling I/O error for attachment {AttachmentName}", fileAttachmentName);
+				logger.LogError(ex, "Docling I/O error for attachment {AttachmentName}", fileName);
 			}
 
-			return null;
+			return [];
 		}
 
-		private async Task<string?> ExtractMarkdownInternal(BinaryData binaryData, CancellationToken cancellationToken)
+		private async Task<string[]> ExtractMarkdownInternal(
+			string fileName,
+			BinaryData binaryData,
+			ILogger logger,
+			CancellationToken cancellationToken)
 		{
-			string pdfBase64 = Convert.ToBase64String(binaryData);
+			if (IsZipFile(binaryData, fileName))
+			{
+				logger.LogInformation("Extracting zip attachment {AttachmentName}", fileName);
+
+				await using Stream zipStream = binaryData.ToStream();
+				await using ZipArchive archive = new(zipStream, ZipArchiveMode.Read);
+				List<string> result = [];
+				foreach (ZipArchiveEntry entry in archive.Entries)
+				{
+					if (string.IsNullOrWhiteSpace(entry.Name))
+					{
+						continue; // directory entry
+					}
+
+					await using MemoryStream entryStream = new();
+					await using (Stream sourceStream = await entry.OpenAsync(cancellationToken))
+					{
+						await sourceStream.CopyToAsync(entryStream, cancellationToken);
+					}
+
+					byte[] entryBytes = entryStream.ToArray();
+					if (entryBytes.Length == 0)
+					{
+						continue;
+					}
+
+					string entryName = string.IsNullOrWhiteSpace(entry.FullName) ? entry.Name : entry.FullName;
+
+					logger.LogInformation(
+						"Processing zip entry {EntryName} from {AttachmentName} ({Size} bytes)",
+						entryName,
+						fileName,
+						entryBytes.Length);
+
+					string[] extractedMarkdown = await doclingClient
+						.ExtractMarkdownInternal(
+							entryName,
+							new BinaryData(entryBytes, GetMimeType(entryName)),
+							logger,
+							cancellationToken);
+					result.AddRange(extractedMarkdown);
+				}
+
+				return result.ToArray();
+			}
+
 			string mediaType = binaryData.MediaType?.Trim().ToLowerInvariant()
 				?? throw new ArgumentNullException(nameof(binaryData.MediaType));
 			(InputFormat? inputFormat, string? _, bool _) = GetInputFormat(mediaType);
 			if (inputFormat is null)
 			{
-				return null;
+				return [];
 			}
 
+			string base64String = Convert.ToBase64String(binaryData);
 			SourceRequestBuilder.SourcePostResponse? response = await doclingClient.V1.Convert.Source
 				.PostAsync(new ConvertDocumentsRequest
 					{
@@ -78,8 +129,8 @@ public static class DoclingClientExtensions
 							{
 								FileSourceRequest = new FileSourceRequest
 								{
-									Filename = "document.pdf",
-									Base64String = pdfBase64
+									Filename = fileName,
+									Base64String = base64String
 								}
 							}
 						],
@@ -90,11 +141,98 @@ public static class DoclingClientExtensions
 					},
 					cancellationToken: cancellationToken);
 
-			return response!.ConvertDocumentResponse?.Document?.MdContent?.String;
+			if (string.IsNullOrEmpty(response?.ConvertDocumentResponse?.Document?.MdContent?.String))
+			{
+				return [];
+			}
+
+			return [response.ConvertDocumentResponse.Document.MdContent.String];
 		}
-		public async Task<string[]> ExtractAndChunk(BinaryData binaryData,
+
+		public async Task<string[]> ExtractAndChunk(
+			string fileName,
+			BinaryData binaryData,
+			TimeSpan timeout,
+			ILogger logger,
 			CancellationToken cancellationToken)
 		{
+			// Use a linked token with a bounded timeout so a canceled Wolverine
+			// message doesn't abort a mid-flight socket read in an unrecoverable way.
+			using CancellationTokenSource doclingCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+			doclingCts.CancelAfter(timeout);
+
+			try
+			{
+				return await doclingClient.ExtractAndChunkInternal(fileName, binaryData, logger, doclingCts.Token);
+			}
+			catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+			{
+				logger.LogError("Docling extraction timed out for attachment {AttachmentName}", fileName);
+			}
+			catch (HttpRequestException ex)
+			{
+				logger.LogError(ex, "Docling extraction failed for attachment {AttachmentName}", fileName);
+			}
+			catch (IOException ex)
+			{
+				logger.LogError(ex, "Docling I/O error for attachment {AttachmentName}", fileName);
+			}
+
+			return [];
+		}
+
+		internal async Task<string[]> ExtractAndChunkInternal(
+			string fileName,
+			BinaryData binaryData,
+			ILogger logger,
+			CancellationToken cancellationToken)
+		{
+			if (IsZipFile(binaryData, fileName))
+			{
+				logger.LogInformation("Extracting zip attachment {AttachmentName}", fileName);
+
+				await using Stream zipStream = binaryData.ToStream();
+				await using ZipArchive archive = new(zipStream, ZipArchiveMode.Read);
+				List<string> result = [];
+				foreach (ZipArchiveEntry entry in archive.Entries)
+				{
+					if (string.IsNullOrWhiteSpace(entry.Name))
+					{
+						continue; // directory entry
+					}
+
+					await using MemoryStream entryStream = new();
+					await using (Stream sourceStream = await entry.OpenAsync(cancellationToken))
+					{
+						await sourceStream.CopyToAsync(entryStream, cancellationToken);
+					}
+
+					byte[] entryBytes = entryStream.ToArray();
+					if (entryBytes.Length == 0)
+					{
+						continue;
+					}
+
+					string entryName = string.IsNullOrWhiteSpace(entry.FullName) ? entry.Name : entry.FullName;
+
+					logger.LogInformation(
+						"Processing zip entry {EntryName} from {AttachmentName} ({Size} bytes)",
+						entryName,
+						fileName,
+						entryBytes.Length);
+
+					string[] extractedMarkdown = await doclingClient
+						.ExtractAndChunkInternal(
+							entryName,
+							new BinaryData(entryBytes, GetMimeType(entryName)),
+							logger,
+							cancellationToken);
+					result.AddRange(extractedMarkdown);
+				}
+
+				return result.ToArray();
+			}
+
 			string mediaType = binaryData.MediaType?.Trim().ToLowerInvariant()
 				?? throw new ArgumentNullException(nameof(binaryData.MediaType));
 			(InputFormat? inputFormat, string? extension, bool base64Encode) = GetInputFormat(mediaType);
@@ -221,5 +359,23 @@ public static class DoclingClientExtensions
 
 			_ => (null, null, false)
 		};
+	}
+
+	private static bool IsZipFile(BinaryData binaryData, string fileName)
+	{
+		return fileName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)
+			|| string.Equals(binaryData.MediaType, "application/zip", StringComparison.OrdinalIgnoreCase)
+			|| string.Equals(binaryData.MediaType, "application/x-zip-compressed", StringComparison.OrdinalIgnoreCase);
+	}
+
+	private static readonly FileExtensionContentTypeProvider s_provider = new();
+	private static string GetMimeType(string fileNameOrPath)
+	{
+		if (!s_provider.TryGetContentType(fileNameOrPath, out string? contentType))
+		{
+			contentType = "application/octet-stream"; // safe default
+		}
+
+		return contentType;
 	}
 }
