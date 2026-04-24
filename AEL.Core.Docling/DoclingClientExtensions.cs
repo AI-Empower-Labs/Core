@@ -13,11 +13,12 @@ public static class DoclingClientExtensions
 {
 	extension(DoclingClient doclingClient)
 	{
-		public async Task<string[]> ExtractMarkdown(
+		public async Task<SourceRequestBuilder.SourcePostResponse[]> ExtractMarkdown(
 			string fileName,
 			BinaryData binaryData,
 			TimeSpan timeout,
 			ILogger logger,
+			Action<ConvertDocumentsRequestOptions>? configure,
 			CancellationToken cancellationToken)
 		{
 			// Use a linked token with a bounded timeout so a canceled Wolverine
@@ -27,7 +28,7 @@ public static class DoclingClientExtensions
 
 			try
 			{
-				return await doclingClient.ExtractMarkdownInternal(fileName, binaryData, logger, doclingCts.Token);
+				return await doclingClient.ExtractMarkdownInternal(fileName, binaryData, logger, configure, doclingCts.Token);
 			}
 			catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
 			{
@@ -45,10 +46,11 @@ public static class DoclingClientExtensions
 			return [];
 		}
 
-		private async Task<string[]> ExtractMarkdownInternal(
+		private async Task<SourceRequestBuilder.SourcePostResponse[]> ExtractMarkdownInternal(
 			string fileName,
 			BinaryData binaryData,
 			ILogger logger,
+			Action<ConvertDocumentsRequestOptions>? configure,
 			CancellationToken cancellationToken)
 		{
 			if (IsZipFile(binaryData, fileName))
@@ -57,7 +59,7 @@ public static class DoclingClientExtensions
 
 				await using Stream zipStream = binaryData.ToStream();
 				await using ZipArchive archive = new(zipStream, ZipArchiveMode.Read);
-				List<string> result = [];
+				List<SourceRequestBuilder.SourcePostResponse> result = [];
 				foreach (ZipArchiveEntry entry in archive.Entries)
 				{
 					if (string.IsNullOrWhiteSpace(entry.Name))
@@ -85,13 +87,14 @@ public static class DoclingClientExtensions
 						fileName,
 						entryBytes.Length);
 
-					string[] extractedMarkdown = await doclingClient
+					SourceRequestBuilder.SourcePostResponse[] sourcePostResponses = await doclingClient
 						.ExtractMarkdownInternal(
 							entryName,
 							new BinaryData(entryBytes, GetMimeType(entryName)),
 							logger,
+							configure,
 							cancellationToken);
-					result.AddRange(extractedMarkdown);
+					result.AddRange(sourcePostResponses);
 				}
 
 				return result.ToArray();
@@ -111,23 +114,25 @@ public static class DoclingClientExtensions
 			}
 
 			string base64String = Convert.ToBase64String(binaryData);
+			ConvertDocumentsRequestOptions documentsRequestOptions = new()
+			{
+				AbortOnError = false, // keep partial results if one page fails
+				DoOcr = true, // key for scans / mixed PDFs
+				FromFormats = [inputFormat],
+				ToFormats = [OutputFormat.Md],
+				Pipeline = ProcessingPipeline.Standard,
+				PdfBackend = PdfBackend.Dlparse_v4,
+				DoTableStructure = true,
+				TableMode = TableFormerMode.Accurate,
+				DoChartExtraction = false,
+				IncludeImages = true,
+				ImageExportMode = ImageRefMode.Placeholder // use Referenced if you prefer external files
+			};
+			configure?.Invoke(documentsRequestOptions);
 			SourceRequestBuilder.SourcePostResponse? response = await doclingClient.V1.Convert.Source
 				.PostAsync(new ConvertDocumentsRequest
 					{
-						Options = new ConvertDocumentsRequestOptions
-						{
-							AbortOnError = false, // keep partial results if one page fails
-							DoOcr = true, // key for scans / mixed PDFs
-							FromFormats = [inputFormat],
-							ToFormats = [OutputFormat.Md],
-							Pipeline = ProcessingPipeline.Standard,
-							PdfBackend = PdfBackend.Dlparse_v4,
-							DoTableStructure = true,
-							TableMode = TableFormerMode.Accurate,
-							DoChartExtraction = false,
-							IncludeImages = true,
-							ImageExportMode = ImageRefMode.Placeholder // use Referenced if you prefer external files
-						},
+						Options = documentsRequestOptions,
 						Sources =
 						[
 							new()
@@ -146,19 +151,20 @@ public static class DoclingClientExtensions
 					},
 					cancellationToken: cancellationToken);
 
-			if (string.IsNullOrEmpty(response?.ConvertDocumentResponse?.Document?.MdContent?.String))
+			if (response is null)
 			{
 				return [];
 			}
 
-			return [response.ConvertDocumentResponse.Document.MdContent.String];
+			return [response];
 		}
 
-		public async Task<string[]> ExtractAndChunk(
+		public async Task<ChunkDocumentResponse[]> ExtractAndChunk(
 			string fileName,
 			BinaryData binaryData,
 			TimeSpan timeout,
 			ILogger logger,
+			Action<ConvertDocumentsRequestOptions>? configure,
 			CancellationToken cancellationToken)
 		{
 			// Use a linked token with a bounded timeout so a canceled Wolverine
@@ -168,7 +174,7 @@ public static class DoclingClientExtensions
 
 			try
 			{
-				return await doclingClient.ExtractAndChunkInternal(fileName, binaryData, logger, doclingCts.Token);
+				return await doclingClient.ExtractAndChunkInternal(fileName, binaryData, logger, configure, doclingCts.Token);
 			}
 			catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
 			{
@@ -186,10 +192,11 @@ public static class DoclingClientExtensions
 			return [];
 		}
 
-		internal async Task<string[]> ExtractAndChunkInternal(
+		internal async Task<ChunkDocumentResponse[]> ExtractAndChunkInternal(
 			string fileName,
 			BinaryData binaryData,
 			ILogger logger,
+			Action<ConvertDocumentsRequestOptions>? configure,
 			CancellationToken cancellationToken)
 		{
 			if (IsZipFile(binaryData, fileName))
@@ -198,7 +205,7 @@ public static class DoclingClientExtensions
 
 				await using Stream zipStream = binaryData.ToStream();
 				await using ZipArchive archive = new(zipStream, ZipArchiveMode.Read);
-				List<string> result = [];
+				List<ChunkDocumentResponse> result = [];
 				foreach (ZipArchiveEntry entry in archive.Entries)
 				{
 					if (string.IsNullOrWhiteSpace(entry.Name))
@@ -226,11 +233,12 @@ public static class DoclingClientExtensions
 						fileName,
 						entryBytes.Length);
 
-					string[] extractedMarkdown = await doclingClient
+					ChunkDocumentResponse[] extractedMarkdown = await doclingClient
 						.ExtractAndChunkInternal(
 							entryName,
 							new BinaryData(entryBytes, GetMimeType(entryName)),
 							logger,
+							configure,
 							cancellationToken);
 					result.AddRange(extractedMarkdown);
 				}
@@ -249,7 +257,22 @@ public static class DoclingClientExtensions
 			// No need to chunk small texts
 			if (!base64Encode && binaryData.Length <= 800)
 			{
-				return [binaryData.ToString()];
+				return
+				[
+					new ChunkDocumentResponse
+					{
+						Chunks =
+						[
+							new ChunkedDocumentResultItem
+							{
+								ChunkIndex = 0,
+								Text = binaryData.ToString()
+							}
+						],
+						Documents = null,
+						ProcessingTime = null
+					}
+				];
 			}
 
 			if (inputFormat == InputFormat.Pdf)
@@ -258,28 +281,30 @@ public static class DoclingClientExtensions
 			}
 
 			string fileContent = Convert.ToBase64String(binaryData);
+			ConvertDocumentsRequestOptions documentsRequestOptions = new()
+			{
+				AbortOnError = false, // keep partial results if one page fails
+				DoOcr = false, // key for scans / mixed PDFs
+				FromFormats = [inputFormat],
+				ToFormats = [OutputFormat.Md],
+				Pipeline = ProcessingPipeline.Standard,
+				PdfBackend = PdfBackend.Docling_parse,
+				DoTableStructure = true,
+				TableMode = TableFormerMode.Accurate,
+				DoChartExtraction = false,
+				IncludeImages = false,
+				ForceOcr = false,
+				DoCodeEnrichment = false,
+				DoPictureClassification = false,
+				DoFormulaEnrichment = false,
+				DoPictureDescription = false,
+				ImageExportMode = ImageRefMode.Placeholder // use Referenced if you prefer external files
+			};
+			configure?.Invoke(documentsRequestOptions);
 			ChunkDocumentResponse? response = await doclingClient.V1.Chunk.Hybrid.Source
 				.PostAsync(new HybridChunkerOptionsDocumentsRequest
 				{
-					ConvertOptions = new ConvertDocumentsRequestOptions
-					{
-						AbortOnError = false, // keep partial results if one page fails
-						DoOcr = false, // key for scans / mixed PDFs
-						FromFormats = [inputFormat],
-						ToFormats = [OutputFormat.Md],
-						Pipeline = ProcessingPipeline.Standard,
-						PdfBackend = PdfBackend.Docling_parse,
-						DoTableStructure = true,
-						TableMode = TableFormerMode.Accurate,
-						DoChartExtraction = false,
-						IncludeImages = false,
-						ForceOcr = false,
-						DoCodeEnrichment = false,
-						DoPictureClassification = false,
-						DoFormulaEnrichment = false,
-						DoPictureDescription = false,
-						ImageExportMode = ImageRefMode.Placeholder // use Referenced if you prefer external files
-					},
+					ConvertOptions = documentsRequestOptions,
 					Sources =
 					[
 						new()
@@ -297,10 +322,12 @@ public static class DoclingClientExtensions
 					}
 				}, cancellationToken: cancellationToken);
 
-			return response!.Chunks?
-				.Where(item => !string.IsNullOrEmpty(item.Text))
-				.Select(item => item.Text!)
-				.ToArray() ?? [];
+			if (response is null)
+			{
+				return [];
+			}
+
+			return [response];
 		}
 	}
 
