@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 namespace AEL.Core.Docling;
 
-internal static class DoclingClientExtensions
+public static class DoclingClientExtensions
 {
 	extension(DoclingClient doclingClient)
 	{
