@@ -105,6 +105,11 @@ public static class DoclingClientExtensions
 				return [];
 			}
 
+			if (inputFormat == InputFormat.Pdf)
+			{
+				binaryData = await PdfCleaner.CleanAndProcessPdf(binaryData);
+			}
+
 			string base64String = Convert.ToBase64String(binaryData);
 			SourceRequestBuilder.SourcePostResponse? response = await doclingClient.V1.Convert.Source
 				.PostAsync(new ConvertDocumentsRequest

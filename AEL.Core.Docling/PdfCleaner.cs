@@ -57,6 +57,6 @@ internal static class PdfCleaner
 
 		using MemoryStream ms = new();
 		await pdfDoc.SaveAsync(ms, true);
-		return BinaryData.FromBytes(ms.ToArray());
+		return BinaryData.FromBytes(ms.ToArray(), "application/pdf");
 	}
 }
