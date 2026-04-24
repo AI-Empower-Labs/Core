@@ -2,7 +2,8 @@
 	<Folder Name="/Solution Items/">
 		<File Path="Directory.Build.props" />
 		<File Path="README.md" />
-		<File Path=".github\workflows\dotnet.yml" />
+		<File Path=".github\workflows\core.yml" />
+		<File Path=".github\workflows\docling.yml" />
 	</Folder>
 	<Project Path="AEL.Core.Docling/AEL.Core.Docling.csproj" />
 	<Project Path="AEL.Core.Tests\AEL.Core.Tests.csproj" />
