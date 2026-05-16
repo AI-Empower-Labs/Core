@@ -49,6 +49,7 @@ public static class LoggingRegistration
 			LoggerConfiguration loggerConfiguration = configuration
 				.ReadFrom.Configuration(innerConfiguration)
 				.MinimumLevel.Override("Microsoft.AspNetCore.DataProtection", LogEventLevel.Warning)
+				.MinimumLevel.Override("Npgsql.Command", LogEventLevel.Warning)
 				.Enrich.FromLogContext()
 				.Enrich.WithExceptionDetails()
 				.Enrich.WithSpan()
