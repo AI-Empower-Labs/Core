@@ -15,10 +15,7 @@ namespace AEL.Core;
 
 public static class OpenTelemetryRegistration
 {
-	public static void Register(IHostApplicationBuilder builder,
-		string serviceName,
-		string serviceVersion,
-		Action<OpenTelemetryBuilder>? configure = null)
+	public static void Register(IHostApplicationBuilder builder, Action<OpenTelemetryBuilder>? configure = null)
 	{
 		string? environmentVariable = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
 		if (!Uri.TryCreate(environmentVariable, UriKind.Absolute, out Uri? endpointUri))
@@ -49,9 +46,9 @@ public static class OpenTelemetryRegistration
 		openTelemetryBuilder
 			.ConfigureResource(resourceBuilder => resourceBuilder
 				.AddService(
-					serviceName: serviceName,
-					serviceVersion: serviceVersion,
-					serviceInstanceId: Environment.MachineName)
+					serviceName: Environment.GetEnvironmentVariable("OTEL_SERVICE_NAME") ?? "AEL",
+					serviceVersion: Environment.GetEnvironmentVariable("OTEL_SERVICE_VERSION") ?? "1.0.0",
+					serviceInstanceId: Environment.GetEnvironmentVariable("OTEL_SERVICE_INSTANCE_ID") ?? Environment.MachineName)
 				.AddEnvironmentVariableDetector())
 			.WithLogging(loggerProviderBuilder =>
 			{
