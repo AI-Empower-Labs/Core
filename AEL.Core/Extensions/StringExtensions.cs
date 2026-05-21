@@ -71,7 +71,7 @@ public static class StringExtensions
 			StringBuilder builder = new();
 
 			// Split text into lines, trimming whitespace and removing empty lines
-			string[] lines = text.Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+			string[] lines = text.Split(['\n', '\r'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
 
 			// Process each line
 			foreach (string line in lines)
@@ -82,11 +82,15 @@ public static class StringExtensions
 					builder.Append(c);
 				}
 
-				// Add a consistent line break after each processed line
-				builder.Append('\n');
+				// Only append '\n' if we actually added characters for this line,
+				// and avoid more than one blank line (max two consecutive '\n')
+				if ((builder.Length < 2 || builder[^1] != '\n' || builder[^2] != '\n'))
+				{
+					builder.Append('\n');
+				}
 			}
 
-			return builder.ToString();
+			return builder.ToString().Trim('n');
 		}
 	}
 
