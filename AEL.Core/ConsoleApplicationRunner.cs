@@ -35,9 +35,9 @@ public static class ConsoleApplicationRunner
 	{
 		return HostRunner
 			.Run<IHost, HostApplicationBuilder>(args, disableJasper,
-				strings =>
+				arguments =>
 				{
-					HostApplicationBuilder builder = new(strings);
+					HostApplicationBuilder builder = new(arguments);
 					configureBuilder?.Invoke(builder);
 					return builder;
 				},
