@@ -15,23 +15,28 @@ public static class HostApplicationBuilderExtensions
 	public static async ValueTask AutomaticDependencyInjection<THostApplicationBuilder>(this THostApplicationBuilder builder, CancellationToken cancellationToken, params Assembly[] assemblies)
 		where THostApplicationBuilder : IHostApplicationBuilder
 	{
+		Log.Logger.Debug("Starting automatic dependency injection for {BuilderType} with {AssemblyCount} assemblies", typeof(THostApplicationBuilder).Name, assemblies.Length);
 		foreach (Type type in TypeResolverHelper.GetClassTypes(assemblies))
 		{
 			if (type.IsBasedOn(typeof(ITransientService)))
 			{
+				Log.Logger.Debug("Registering transient service {Type}", type.FullName);
 				builder.Services.RegisterType(type, ServiceLifetime.Transient);
 			}
 			else if (type.IsBasedOn(typeof(IScopedService)))
 			{
+				Log.Logger.Debug("Registering scoped service {Type}", type.FullName);
 				builder.Services.RegisterType(type, ServiceLifetime.Scoped);
 			}
 			else if (type.IsBasedOn(typeof(ISingletonService)))
 			{
+				Log.Logger.Debug("Registering singleton service {Type}", type.FullName);
 				builder.Services.RegisterType(type, ServiceLifetime.Singleton);
 			}
 
 			if (type.IsBasedOn(typeof(IDependencyInjectionRegistration<THostApplicationBuilder>)))
 			{
+				Log.Logger.Debug("Running dependency injection registration {Type}", type.FullName);
 				MethodInfo? methodInfo = type.GetMethod(nameof(IDependencyInjectionRegistration<>.Register));
 				if (methodInfo is null || methodInfo.ReturnType != typeof(void))
 				{
@@ -49,6 +54,7 @@ public static class HostApplicationBuilderExtensions
 
 			if (type.IsBasedOn(typeof(IDependencyInjectionRegistrationAsync<THostApplicationBuilder>)))
 			{
+				Log.Logger.Debug("Running async dependency injection registration {Type}", type.FullName);
 				MethodInfo? methodInfo = type.GetMethod(nameof(IDependencyInjectionRegistrationAsync<>.Register));
 				if (methodInfo is null || methodInfo.ReturnType != typeof(ValueTask))
 				{
@@ -79,5 +85,7 @@ public static class HostApplicationBuilderExtensions
 					type.FullName);
 			}
 		}
+
+		Log.Logger.Debug("Automatic dependency injection completed for {BuilderType}", typeof(THostApplicationBuilder).Name);
 	}
 }
