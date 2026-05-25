@@ -63,6 +63,16 @@ public static class HostApplicationBuilderExtensions
 				{
 					await valueTask;
 				}
+				else if (valueTaskObject is Task task)
+				{
+					await task;
+				}
+				else
+				{
+					throw new InvalidOperationException(
+						$"Type {type.FullName} implements {nameof(IDependencyInjectionRegistrationAsync<>)}<{typeof(THostApplicationBuilder).Name}> " +
+						$"but does not declare: public static ValueTask {nameof(IDependencyInjectionRegistrationAsync<>.Register)}({typeof(THostApplicationBuilder).Name} builder).");
+				}
 
 				Log.Logger.Debug("Registered {Count} types with {Type}",
 					builder.Services.Count - beforeCount,
