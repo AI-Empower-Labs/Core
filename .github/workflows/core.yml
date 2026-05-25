@@ -49,7 +49,11 @@ jobs:
         else
           echo "No NuGet packages found to publish."
         fi
+    - name: Publish Symbols
+      #if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      run: |
         if compgen -G "./artifacts/nupkgs/*.snupkg" > /dev/null; then
+          echo "Symbol packages found; publishing .snupkg files."
           dotnet nuget push ./artifacts/nupkgs/*.snupkg --source https://nuget.pkg.github.com/AI-Empower-Labs/index.json --api-key ${{ secrets.NUGET_PAT }} --skip-duplicate
         else
           echo "No symbol packages found to publish."
