@@ -38,7 +38,7 @@ jobs:
     - name: Test
       run: dotnet test --no-build --verbosity normal --configuration Release
     - name: Pack NuGet
-      run: dotnet pack AEL.Core/AEL.Core.csproj --configuration Release --no-build --output ./nupkgs /p:PackageVersion=1.0.${{ steps.bn.outputs.num }}
+      run: dotnet pack AEL.Core/AEL.Core.csproj --configuration Release --no-build --output ./nupkgs /p:PackageVersion=1.0.${{ steps.bn.outputs.num }} /p:ContinuousIntegrationBuild=true
     - name: Publish NuGet
       #if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       run: |
@@ -46,4 +46,9 @@ jobs:
           dotnet nuget push ./nupkgs/*.nupkg --source https://nuget.pkg.github.com/AI-Empower-Labs/index.json --api-key ${{ secrets.NUGET_PAT }} --skip-duplicate
         else
           echo "No NuGet packages found to publish."
+        fi
+        if compgen -G "./nupkgs/*.snupkg" > /dev/null; then
+          dotnet nuget push ./nupkgs/*.snupkg --source https://nuget.pkg.github.com/AI-Empower-Labs/index.json --api-key ${{ secrets.NUGET_PAT }} --skip-duplicate
+        else
+          echo "No symbol packages found to publish."
         fi
