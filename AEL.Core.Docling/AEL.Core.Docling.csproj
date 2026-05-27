@@ -8,7 +8,7 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<RepositoryUrl>https://github.com/AI-Empower-Labs/Core</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
-		<PackageTags>ael;core;doocling</PackageTags>
+		<PackageTags>ael;core;docling</PackageTags>
 		<IsPackable>true</IsPackable>
 	</PropertyGroup>
 
