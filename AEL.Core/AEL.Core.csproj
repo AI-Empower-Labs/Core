@@ -26,7 +26,7 @@
 		<PackageReference Include="Cronos" Version="0.13.0"/>
 		<PackageReference Include="FastEnum" Version="2.0.6"/>
 		<PackageReference Include="FluentValidation" Version="12.1.1"/>
-		<PackageReference Include="JasperFx" Version="2.1.4" />
+		<PackageReference Include="JasperFx" Version="2.5.0" />
 		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.8"/>
 		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.8"/>
 		<PackageReference Include="Nerdbank.Streams" Version="2.13.16"/>
