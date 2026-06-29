@@ -24,9 +24,17 @@ public abstract partial class AsyncBackgroundService : AsyncDisposableBase, IHos
 	public virtual Task StartAsync(CancellationToken cancellationToken)
 	{
 		LogStart(_logger);
-		_executingTask = ExecuteAsync(_stoppingCts.Token)
+		_executingTask = ExecuteCore(cancellationToken);
+		return _executingTask.IsCompleted ? _executingTask : Task.CompletedTask;
+	}
+
+	private async Task ExecuteCore(CancellationToken cancellationToken)
+	{
+		// Yield immediately so that no part of a derived ExecuteAsync runs
+		// synchronously on the host startup thread and blocks other hosted services.
+		await Task.Yield();
+		await ExecuteAsync(_stoppingCts.Token)
 			.WithExceptionProtection(_logger, "Background service execution exception", cancellationToken: cancellationToken);
-		return Task.CompletedTask;
 	}
 
 	/// <summary>
