@@ -36,7 +36,7 @@ public sealed class Disposables
 		return new AsyncDisposableBag();
 	}
 
-	public static IAsyncDisposable CreateAsync(Func<CancellationToken, Task> func)
+	public static IAsyncDisposable CreateAsync<T>(T state, Func<T, CancellationToken, Task> func)
 	{
 		AsyncDisposableBag result = new();
 		CancellationTokenSource cancellationTokenSource = new();
@@ -46,8 +46,13 @@ public sealed class Disposables
 			cancellationTokenSource.Dispose();
 		});
 		CancellationToken cancellationToken = cancellationTokenSource.Token;
-		result.Add(() => func(cancellationToken));
+		result.Add(() => func(state, cancellationToken));
 		return result;
+	}
+
+	public static IAsyncDisposable CreateAsync(Func<CancellationToken, Task> func)
+	{
+		return CreateAsync<object?>(null, (_, token) => func(token));
 	}
 
 	/// <summary>
