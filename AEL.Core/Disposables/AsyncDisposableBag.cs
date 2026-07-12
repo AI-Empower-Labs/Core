@@ -24,7 +24,7 @@ public sealed class AsyncDisposableBag : IAsyncDisposable
 	/// <summary>
 	/// A stack to store asynchronous clean-up tasks that will be executed when disposing an object.
 	/// </summary>
-	private readonly ConcurrentStack<Func<Task>> _disposeTasks = new();
+	private readonly ConcurrentStack<Func<CancellationToken, Task>> _disposeTasks = new();
 
 	/// <summary>
 	/// Gets a value indicating whether the object has been disposed.
@@ -55,6 +55,19 @@ public sealed class AsyncDisposableBag : IAsyncDisposable
 	/// Thrown when the <paramref name="disposeTask"/> is null.
 	/// </exception>
 	public void Add(Func<Task> disposeTask)
+	{
+		ArgumentNullException.ThrowIfNull(disposeTask);
+		_disposeTasks.Push(_ => disposeTask());
+	}
+
+	/// <summary>
+	/// Adds a dispose task to the stack of tasks to be executed when disposing.
+	/// </summary>
+	/// <param name="disposeTask">The dispose task to be added. Must not be null.</param>
+	/// <exception cref="ArgumentNullException">
+	/// Thrown when the <paramref name="disposeTask"/> is null.
+	/// </exception>
+	public void Add(Func<CancellationToken, Task> disposeTask)
 	{
 		ArgumentNullException.ThrowIfNull(disposeTask);
 		_disposeTasks.Push(disposeTask);
@@ -146,12 +159,11 @@ public sealed class AsyncDisposableBag : IAsyncDisposable
 	private async Task HandleDisposeTasks(CancellationToken cancellationToken)
 	{
 		List<Exception>? exceptions = null;
-		while (_disposeTasks.TryPop(out Func<Task>? disposable))
+		while (_disposeTasks.TryPop(out Func<CancellationToken, Task>? disposable))
 		{
-			Task shutdownTask = disposable();
 			try
 			{
-				await shutdownTask.WithCancellation(cancellationToken);
+				await disposable(cancellationToken);
 			}
 			catch (Exception e)
 			{
