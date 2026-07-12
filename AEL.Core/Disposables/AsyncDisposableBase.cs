@@ -49,7 +49,10 @@ public abstract class AsyncDisposableBase : IAsyncDisposable
 	{
 		if (_disposableBag is not null)
 		{
-			await _disposableBag.DisposeAsync();
+			using CancellationTokenSource timeout = new(10000);
+			CancellationTokenSource cancellationTokenSource = CancellationTokenSource
+				.CreateLinkedTokenSource(LazyCancellationTokenSource.Value.Token, timeout.Token);
+			await _disposableBag.DisposeAsync(cancellationTokenSource.Token);
 		}
 	}
 

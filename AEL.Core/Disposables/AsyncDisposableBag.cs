@@ -102,15 +102,20 @@ public sealed class AsyncDisposableBag : IAsyncDisposable
 	/// Asynchronously releases the resources used by the object.
 	/// </summary>
 	/// <returns>A task representing the asynchronous operation.</returns>
-	public async ValueTask DisposeAsync()
+	public async ValueTask DisposeAsync(CancellationToken cancellationToken)
 	{
 		if (!SignalDispose())
 		{
 			return;
 		}
 
-		await HandleDisposeTasks();
+		await HandleDisposeTasks(cancellationToken);
 		SuppressFinalize();
+	}
+
+	public ValueTask DisposeAsync()
+	{
+		return DisposeAsync(CancellationToken.None);
 	}
 
 	/// <summary>
@@ -138,7 +143,7 @@ public sealed class AsyncDisposableBag : IAsyncDisposable
 	/// The method also ensures that the tasks are executed in a non-blocking manner by using the ConfigureAwait(false) method.
 	/// </remarks>
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private async Task HandleDisposeTasks()
+	private async Task HandleDisposeTasks(CancellationToken cancellationToken)
 	{
 		List<Exception>? exceptions = null;
 		while (_disposeTasks.TryPop(out Func<Task>? disposable))
@@ -146,7 +151,7 @@ public sealed class AsyncDisposableBag : IAsyncDisposable
 			Task shutdownTask = disposable();
 			try
 			{
-				await shutdownTask;
+				await shutdownTask.WithCancellation(cancellationToken);
 			}
 			catch (Exception e)
 			{

@@ -26,7 +26,7 @@ public sealed class AsyncDisposableBagTests
             order.Add("task");
         });
 
-        await bag.DisposeAsync();
+        await bag.DisposeAsync(TestContext.Current.CancellationToken);
 
         Assert.True(bag.IsDisposed);
         Assert.Equal(new[] { "task", "action", "id", "iad" }, order);
@@ -60,7 +60,7 @@ public sealed class AsyncDisposableBagTests
             throw new ApplicationException("two");
         });
 
-        AggregateException ex = await Assert.ThrowsAsync<AggregateException>(async () => await bag.DisposeAsync());
+        AggregateException ex = await Assert.ThrowsAsync<AggregateException>(async () => await bag.DisposeAsync(TestContext.Current.CancellationToken));
         Assert.Equal(2, ex.InnerExceptions.Count);
     }
 
@@ -71,8 +71,8 @@ public sealed class AsyncDisposableBagTests
         AsyncDisposableBag bag = new();
         bag.Add(() => runs++);
 
-        await bag.DisposeAsync();
-        await bag.DisposeAsync();
+        await bag.DisposeAsync(TestContext.Current.CancellationToken);
+        await bag.DisposeAsync(TestContext.Current.CancellationToken);
 
         Assert.True(bag.IsDisposed);
         Assert.Equal(1, runs);
