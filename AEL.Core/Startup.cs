@@ -43,7 +43,7 @@ public sealed class Startup : DisposableBase
 		// Catches exceptions on background Task threads that were "forgotten"
 		TaskScheduler.UnobservedTaskException += (_, e) =>
 		{
-			Log.Logger.Error("Background Task Error");
+			Log.Logger.Error(e.Exception, "Background Task Error");
 			e.SetObserved(); // Prevents the process from crashing in older .NET versions
 		};
 
