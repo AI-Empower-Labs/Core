@@ -345,7 +345,7 @@ public static class DoclingClientExtensions
 			"application/vnd.openxmlformats-officedocument.wordprocessingml.document" => (InputFormat.Docx, "docx", true),
 
 			// PPTX
-			"application/vnd.openxmlformats-officedocument.presentationml.presentation" => (InputFormat.Docx, "pptx", true),
+			"application/vnd.openxmlformats-officedocument.presentationml.presentation" => (InputFormat.Pptx, "pptx", true),
 
 			// HTML
 			"text/html" => (InputFormat.Html, "html", false),
