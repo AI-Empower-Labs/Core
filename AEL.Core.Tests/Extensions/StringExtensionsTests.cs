@@ -4,10 +4,10 @@ public class StringExtensionsTests
 {
     [Theory]
     [InlineData("", "")]
-    [InlineData("a", "a")]
-    [InlineData("A", "a")]
-    [InlineData("Test", "test")]
-    [InlineData("test", "test")]
+    [InlineData("a", "A")]
+    [InlineData("A", "A")]
+    [InlineData("Test", "Test")]
+    [InlineData("test", "Test")]
     public void ToPascalCase_ConvertsCorrectly(string input, string expected)
     {
         Assert.Equal(expected, input.ToPascalCase());

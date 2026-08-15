@@ -6,20 +6,32 @@ namespace AEL.Core.Tests;
 
 public sealed class AsyncBatchProcessorTests
 {
-	private sealed class TestAsyncBatchProcessor<TIn, TOut> : AsyncBatchProcessor<TIn, TOut>
+	private sealed class TestAsyncBatchProcessor<TIn>(
+		int batchSize,
+		Func<IEnumerable<TIn>, CancellationToken, Task> func,
+		ILogger logger,
+		int? capacity,
+		BoundedChannelFullMode fullMode)
+		: AsyncBatchProcessor<TIn>(batchSize, logger, capacity, fullMode)
 	{
-		private readonly Func<IEnumerable<TIn>, CancellationToken, Task<TOut[]>> _func;
+		private readonly Func<IEnumerable<TIn>, CancellationToken, Task> _func = func ?? throw new ArgumentNullException(nameof(func));
 
-		public TestAsyncBatchProcessor(
-			int batchSize,
-			Func<IEnumerable<TIn>, CancellationToken, Task<TOut[]>> func,
-			ILogger logger,
-			int? capacity,
-			BoundedChannelFullMode fullMode)
-			: base(batchSize, logger, capacity, fullMode)
-		{
-			_func = func ?? throw new ArgumentNullException(nameof(func));
-		}
+		protected override ValueTask ExecuteBatchProcess(ICollection<TIn> inputs, CancellationToken cancellationToken)
+			=> new(_func(inputs, cancellationToken));
+
+		public new Task Process(TIn value, CancellationToken cancellationToken = default)
+			=> base.Process(value, cancellationToken);
+	}
+
+	private sealed class TestAsyncBatchProcessor<TIn, TOut>(
+		int batchSize,
+		Func<IEnumerable<TIn>, CancellationToken, Task<TOut[]>> func,
+		ILogger logger,
+		int? capacity,
+		BoundedChannelFullMode fullMode)
+		: AsyncBatchProcessor<TIn, TOut>(batchSize, logger, capacity, fullMode)
+	{
+		private readonly Func<IEnumerable<TIn>, CancellationToken, Task<TOut[]>> _func = func ?? throw new ArgumentNullException(nameof(func));
 
 		protected override ValueTask<TOut[]> ExecuteBatchProcess(ICollection<TIn> inputs, CancellationToken cancellationToken)
 			=> new(_func(inputs, cancellationToken));
@@ -75,6 +87,23 @@ public sealed class AsyncBatchProcessorTests
 		Assert.Equal(inputs.ToArray(), outputs);
 
 		await proc.StopAsync(TestContext.Current.CancellationToken);
+	}
+
+	[Fact]
+	public async Task NonGeneric_Process_AlreadyCanceled_FaultsWithCanceledTask()
+	{
+		ILogger logger = new TestLogger();
+		await using TestAsyncBatchProcessor<int> proc = new(
+			batchSize: 2,
+			func: (_, _) => Task.CompletedTask,
+			logger: logger,
+			capacity: null,
+			fullMode: BoundedChannelFullMode.Wait);
+
+		CancellationTokenSource cts = new();
+		await cts.CancelAsync();
+
+		await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await proc.Process(1, cts.Token));
 	}
 
 	[Fact]

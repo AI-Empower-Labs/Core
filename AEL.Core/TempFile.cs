@@ -2,8 +2,14 @@
 
 public sealed class TempFile : DisposableBase
 {
-	public TempFile()
+	public TempFile() : this(Path.GetTempFileName())
 	{
+	}
+
+	public TempFile(string fileName)
+	{
+		ArgumentException.ThrowIfNullOrWhiteSpace(fileName);
+		FileName = fileName;
 		DisposableBag.Add(() =>
 		{
 			if (File.Exists(FileName))
@@ -13,12 +19,7 @@ public sealed class TempFile : DisposableBase
 		});
 	}
 
-	public TempFile(string fileName) : this()
-	{
-		FileName = fileName;
-	}
-
-	public string FileName { get; } = Path.GetTempFileName();
+	public string FileName { get; }
 
 	public FileStream OpenRead() => File.OpenRead(FileName);
 	public FileStream OpenWrite() => File.OpenWrite(FileName);

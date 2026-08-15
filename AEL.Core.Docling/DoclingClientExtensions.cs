@@ -114,20 +114,7 @@ public static class DoclingClientExtensions
 			}
 
 			string base64String = Convert.ToBase64String(binaryData);
-			ConvertDocumentsRequestOptions documentsRequestOptions = new()
-			{
-				AbortOnError = false, // keep partial results if one page fails
-				DoOcr = true, // key for scans / mixed PDFs
-				FromFormats = [inputFormat],
-				ToFormats = [OutputFormat.Md],
-				Pipeline = ProcessingPipeline.Standard,
-				PdfBackend = PdfBackend.Dlparse_v4,
-				DoTableStructure = true,
-				TableMode = TableFormerMode.Accurate,
-				DoChartExtraction = false,
-				IncludeImages = true,
-				ImageExportMode = ImageRefMode.Placeholder // use Referenced if you prefer external files
-			};
+			ConvertDocumentsRequestOptions documentsRequestOptions = CreateConvertOptions(inputFormat.Value, includeImages: true);
 			configure?.Invoke(documentsRequestOptions);
 			SourceRequestBuilder.SourcePostResponse? response = await doclingClient.V1.Convert.Source
 				.PostAsync(new ConvertDocumentsRequest
@@ -281,25 +268,12 @@ public static class DoclingClientExtensions
 			}
 
 			string fileContent = Convert.ToBase64String(binaryData);
-			ConvertDocumentsRequestOptions documentsRequestOptions = new()
-			{
-				AbortOnError = false, // keep partial results if one page fails
-				DoOcr = false, // key for scans / mixed PDFs
-				FromFormats = [inputFormat],
-				ToFormats = [OutputFormat.Md],
-				Pipeline = ProcessingPipeline.Standard,
-				PdfBackend = PdfBackend.Docling_parse,
-				DoTableStructure = true,
-				TableMode = TableFormerMode.Accurate,
-				DoChartExtraction = false,
-				IncludeImages = false,
-				ForceOcr = false,
-				DoCodeEnrichment = false,
-				DoPictureClassification = false,
-				DoFormulaEnrichment = false,
-				DoPictureDescription = false,
-				ImageExportMode = ImageRefMode.Placeholder // use Referenced if you prefer external files
-			};
+			ConvertDocumentsRequestOptions documentsRequestOptions = CreateConvertOptions(inputFormat.Value, includeImages: false);
+			documentsRequestOptions.ForceOcr = false;
+			documentsRequestOptions.DoCodeEnrichment = false;
+			documentsRequestOptions.DoPictureClassification = false;
+			documentsRequestOptions.DoFormulaEnrichment = false;
+			documentsRequestOptions.DoPictureDescription = false;
 			configure?.Invoke(documentsRequestOptions);
 			ChunkDocumentResponse? response = await doclingClient.V1.Chunk.Hybrid.Source
 				.PostAsync(new HybridChunkerOptionsDocumentsRequest
@@ -329,6 +303,24 @@ public static class DoclingClientExtensions
 
 			return [response];
 		}
+	}
+
+	private static ConvertDocumentsRequestOptions CreateConvertOptions(InputFormat inputFormat, bool includeImages)
+	{
+		return new ConvertDocumentsRequestOptions
+		{
+			AbortOnError = false, // keep partial results if one page fails
+			DoOcr = true, // key for scans / mixed PDFs
+			FromFormats = [inputFormat],
+			ToFormats = [OutputFormat.Md],
+			Pipeline = ProcessingPipeline.Standard,
+			PdfBackend = PdfBackend.Dlparse_v4,
+			DoTableStructure = true,
+			TableMode = TableFormerMode.Accurate,
+			DoChartExtraction = false,
+			IncludeImages = includeImages,
+			ImageExportMode = ImageRefMode.Placeholder // use Referenced if you prefer external files
+		};
 	}
 
 	private static (InputFormat? InputFormat, string? Extension, bool Base64Encode) GetInputFormat(string mediaType)
