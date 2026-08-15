@@ -32,9 +32,14 @@ public static class HostExtensions
 				Log.Logger.Debug("Running async host setup {Type}", type.FullName);
 				MethodInfo? methodInfo = type.GetMethod(nameof(IHostSetupAsync<>.Setup));
 				object? valueTaskObject = methodInfo?.Invoke(null, [host, cancellationToken]);
-				if (valueTaskObject is ValueTask valueTask)
+				switch (valueTaskObject)
 				{
-					await valueTask;
+					case ValueTask valueTask:
+						await valueTask;
+						break;
+					case Task task:
+						await task;
+						break;
 				}
 
 				Log.Logger.Debug("Async host setup {Type} completed", type.FullName);
