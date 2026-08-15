@@ -16,6 +16,8 @@ public static class HostRunner
 		bool disableJasper,
 		Func<string[], THostApplicationBuilder> create,
 		Func<THostApplicationBuilder, THost> build,
+		Action<THostApplicationBuilder>? configureBuilder = null,
+		Action<THost>? configureHost = null,
 		params Assembly[] assemblies)
 		where THost : IHost
 		where THostApplicationBuilder : IHostApplicationBuilder
@@ -25,7 +27,7 @@ public static class HostRunner
 		try
 		{
 			Log.Logger.Information("Starting host runner for {HostType} with {AssemblyCount} assemblies", typeof(THost).Name, assemblies.Length);
-			using THost host = await HostBuilder.Build(args, create, null, build, null, cts.Token, assemblies);
+			using THost host = await HostBuilder.Build(args, create, configureBuilder, build, configureHost, cts.Token, assemblies);
 			Log.Logger.Debug("Host runner built {HostType}", typeof(THost).Name);
 			if (disableJasper)
 			{

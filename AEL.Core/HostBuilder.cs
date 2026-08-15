@@ -21,6 +21,9 @@ public static class HostBuilder
 	{
 		Log.Logger.Debug("Creating host application builder for {HostType} with {AssemblyCount} assemblies", typeof(THost).Name, assemblies.Length);
 		THostApplicationBuilder builder = create(args);
+		Log.Logger.Debug("Registering Serilog and OpenTelemetry for {BuilderType}", typeof(THostApplicationBuilder).Name);
+		LoggingRegistration.Register(builder);
+		OpenTelemetryRegistration.Register(builder);
 		Log.Logger.Debug("Running automatic dependency injection for {BuilderType}", typeof(THostApplicationBuilder).Name);
 		await builder.AutomaticDependencyInjection(cancellationToken, assemblies);
 		Log.Logger.Debug("Automatic dependency injection completed for {BuilderType}", typeof(THostApplicationBuilder).Name);

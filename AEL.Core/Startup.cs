@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 using System.Text.Json.Serialization;
@@ -13,8 +14,26 @@ namespace AEL.Core;
 
 public sealed class Startup : DisposableBase
 {
+	private readonly ILogger _previousLogger;
+	private readonly object? _previousRegexTimeout;
+	private readonly Encoding _previousOutputEncoding;
+	private readonly Encoding _previousInputEncoding;
+	private readonly CultureInfo? _previousCulture;
+	private readonly CultureInfo? _previousUICulture;
+	private readonly Func<Type, MemberInfo?, LambdaExpression?, string>? _previousDisplayNameResolver;
+	private readonly UnhandledExceptionEventHandler _unhandledExceptionHandler;
+	private readonly EventHandler<UnobservedTaskExceptionEventArgs> _unobservedTaskExceptionHandler;
+
 	public Startup()
 	{
+		_previousLogger = Log.Logger;
+		_previousRegexTimeout = AppDomain.CurrentDomain.GetData("REGEX_DEFAULT_MATCH_TIMEOUT");
+		_previousOutputEncoding = Console.OutputEncoding;
+		_previousInputEncoding = Console.InputEncoding;
+		_previousCulture = CultureInfo.DefaultThreadCurrentCulture;
+		_previousUICulture = CultureInfo.DefaultThreadCurrentUICulture;
+		_previousDisplayNameResolver = ValidatorOptions.Global.DisplayNameResolver;
+
 		Log.Logger = new LoggerConfiguration()
 			.MinimumLevel.Information()
 			.Enrich.FromLogContext()
@@ -22,7 +41,6 @@ public sealed class Startup : DisposableBase
 			.WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level}] {SourceContext}{NewLine}{Message:lj}{NewLine}{Exception}{NewLine}", theme: AnsiConsoleTheme.Code)
 			.WriteTo.OpenTelemetry(_ => { })
 			.CreateBootstrapLogger();
-		DisposableBag.Add(Log.CloseAndFlush);
 
 		// Set a 2-second timeout for all Regex operations globally
 		AppDomain.CurrentDomain.SetData("REGEX_DEFAULT_MATCH_TIMEOUT", TimeSpan.FromSeconds(2.0));
@@ -34,18 +52,10 @@ public sealed class Startup : DisposableBase
 		CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
 		CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
 
-		// Catches exceptions thrown on the main thread that weren't caught by a try/catch
-		AppDomain.CurrentDomain.UnhandledException += (_, e) =>
-		{
-			Log.Logger.Fatal($"CRITICAL ERROR: {e.ExceptionObject}");
-		};
-
-		// Catches exceptions on background Task threads that were "forgotten"
-		TaskScheduler.UnobservedTaskException += (_, e) =>
-		{
-			Log.Logger.Error(e.Exception, "Background Task Error");
-			e.SetObserved(); // Prevents the process from crashing in older .NET versions
-		};
+		_unhandledExceptionHandler = OnUnhandledException;
+		_unobservedTaskExceptionHandler = OnUnobservedTaskException;
+		AppDomain.CurrentDomain.UnhandledException += _unhandledExceptionHandler;
+		TaskScheduler.UnobservedTaskException += _unobservedTaskExceptionHandler;
 
 		// Configure FluentValidation to use JSON property names in validation error messages
 		// This ensures that validation error messages display the JSON property name (if available)
@@ -65,5 +75,42 @@ public sealed class Startup : DisposableBase
 			// Return the JSON property name if available, otherwise fall back to the member name
 			return string.IsNullOrEmpty(jsonPropertyName) ? member.Name : jsonPropertyName;
 		};
+
+		DisposableBag.Add(Restore);
+	}
+
+	private static void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
+	{
+		Log.Logger.Fatal($"CRITICAL ERROR: {e.ExceptionObject}");
+	}
+
+	private static void OnUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
+	{
+		Log.Logger.Error(e.Exception, "Background Task Error");
+		e.SetObserved(); // Prevents the process from crashing in older .NET versions
+	}
+
+	private void Restore()
+	{
+		AppDomain.CurrentDomain.UnhandledException -= _unhandledExceptionHandler;
+		TaskScheduler.UnobservedTaskException -= _unobservedTaskExceptionHandler;
+
+		Log.CloseAndFlush();
+		Log.Logger = _previousLogger;
+
+		AppDomain.CurrentDomain.SetData("REGEX_DEFAULT_MATCH_TIMEOUT", _previousRegexTimeout);
+		CultureInfo.DefaultThreadCurrentCulture = _previousCulture;
+		CultureInfo.DefaultThreadCurrentUICulture = _previousUICulture;
+		ValidatorOptions.Global.DisplayNameResolver = _previousDisplayNameResolver;
+
+		try
+		{
+			Console.OutputEncoding = _previousOutputEncoding;
+			Console.InputEncoding = _previousInputEncoding;
+		}
+		catch (IOException)
+		{
+			// Console encoding cannot be restored when the stream is redirected.
+		}
 	}
 }

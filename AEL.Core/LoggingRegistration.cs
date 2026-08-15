@@ -24,27 +24,7 @@ public static class LoggingRegistration
 		builder.Logging.ClearProviders();
 		builder.Services.AddSerilog((sp, configuration) =>
 		{
-			IConfiguration innerConfiguration;
-			string? environmentConfiguration = Environment.GetEnvironmentVariable("SERILOG");
-			if (!string.IsNullOrWhiteSpace(environmentConfiguration))
-			{
-				var logConfigObject = new
-				{
-					Serilog = new
-					{
-						MinimumLevel = JsonSerializer.Deserialize<object>(environmentConfiguration)
-					}
-				};
-				byte[] jsonBytes = JsonSerializer.SerializeToUtf8Bytes(logConfigObject);
-				using MemoryStream stream = new(jsonBytes);
-				innerConfiguration = new ConfigurationBuilder()
-					.AddJsonStream(stream)
-					.Build();
-			}
-			else
-			{
-				innerConfiguration = sp.GetRequiredService<IConfiguration>();
-			}
+			IConfiguration innerConfiguration = ResolveSerilogConfiguration(sp);
 
 			LoggerConfiguration loggerConfiguration = configuration
 				.ReadFrom.Configuration(innerConfiguration)
@@ -74,6 +54,44 @@ public static class LoggingRegistration
 
 			configure?.Invoke(configuration);
 		});
+	}
+
+	private static IConfiguration ResolveSerilogConfiguration(IServiceProvider sp)
+	{
+		IConfiguration hostConfiguration = sp.GetRequiredService<IConfiguration>();
+		string? environmentConfiguration = Environment.GetEnvironmentVariable("SERILOG");
+		if (string.IsNullOrWhiteSpace(environmentConfiguration))
+		{
+			return hostConfiguration;
+		}
+
+		try
+		{
+			object? minimumLevel = JsonSerializer.Deserialize<object>(environmentConfiguration);
+			if (minimumLevel is null)
+			{
+				Log.Warning("SERILOG environment variable deserialized to null; falling back to host configuration.");
+				return hostConfiguration;
+			}
+
+			var logConfigObject = new
+			{
+				Serilog = new
+				{
+					MinimumLevel = minimumLevel
+				}
+			};
+			byte[] jsonBytes = JsonSerializer.SerializeToUtf8Bytes(logConfigObject);
+			using MemoryStream stream = new(jsonBytes);
+			return new ConfigurationBuilder()
+				.AddJsonStream(stream)
+				.Build();
+		}
+		catch (JsonException ex)
+		{
+			Log.Warning(ex, "Invalid SERILOG environment variable; falling back to host configuration.");
+			return hostConfiguration;
+		}
 	}
 
 	private static Dictionary<string, string>? ParseOtlpHeaders(string? headers)

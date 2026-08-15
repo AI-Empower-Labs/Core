@@ -210,13 +210,7 @@ public static class Nanoid
 		// See https://github.com/ai/nanoid/blob/master/format.js for an
 		// explanation as to why masking with `random % alphabet` is a common
 		// mistake security-wise.
-
-		// Use `Int32.LeadingZeroCount` on .net7 and above
-#if NET7_0
-            var mask = (2 << 31 - Int32.LeadingZeroCount(alphabet.Length - 1 | 1)) - 1;
-#else
-		int mask = (2 << 31 - Clz32((alphabet.Length - 1) | 1)) - 1;
-#endif
+		int mask = (2 << 31 - int.LeadingZeroCount((alphabet.Length - 1) | 1)) - 1;
 
 		// Original dev notes regarding this algorithm.
 		// Source: https://github.com/ai/nanoid/blob/0454333dee4612d2c2e163d271af6cc3ce1e5aa4/index.js#L45
@@ -227,13 +221,8 @@ public static class Nanoid
 		// according to benchmarks)."
 		int step = (int)Math.Ceiling(1.6 * mask * size / alphabet.Length);
 
-#if NETSTANDARD2_1
-            Span<char> idBuilder = stackalloc char[size];
-            Span<byte> bytes = stackalloc byte[step];
-#else
-		char[] idBuilder = new char[size];
-		byte[] bytes = new byte[step];
-#endif
+		Span<char> idBuilder = size <= 256 ? stackalloc char[size] : new char[size];
+		Span<byte> bytes = step <= 256 ? stackalloc byte[step] : new byte[step];
 
 		int cnt = 0;
 
@@ -254,86 +243,31 @@ public static class Nanoid
 			}
 		}
 	}
-
-	// On dotnet7 and above we use `Int32.LeadingZeroCount` instead of this.
-#if !NET7_0
-	/// <summary>
-	/// Counts leading zeros of <paramref name="x"/>.
-	/// </summary>
-	/// <param name="x">Input number.</param>
-	/// <returns>Number of leading zeros.</returns>
-	/// <remarks>
-	/// Courtesy of spender/Sunsetquest see https://stackoverflow.com/a/10439333/623392.
-	/// </remarks>
-	internal static int Clz32(int x)
-	{
-		const int numIntBits = sizeof(int) * 8; //compile time constant
-		//do the smearing
-		x |= x >> 1;
-		x |= x >> 2;
-		x |= x >> 4;
-		x |= x >> 8;
-		x |= x >> 16;
-		//count the ones
-		x -= x >> 1 & 0x55555555;
-		x = (x >> 2 & 0x33333333) + (x & 0x33333333);
-		x = (x >> 4) + x & 0x0f0f0f0f;
-		x += x >> 8;
-		x += x >> 16;
-		return numIntBits - (x & 0x0000003f); //subtract # of 1s from 32
-	}
-#endif
 }
 
 public class CryptoRandom : Random
 {
-	private readonly RandomNumberGenerator _r;
-
-#if !NETSTANDARD2_1
-	private readonly byte[] _uint32Buffer = new byte[4];
-#endif
+	private readonly RandomNumberGenerator _r = RandomNumberGenerator.Create();
 
 	/// <inheritdoc />
-	/// <summary>
-	/// </summary>
-	public CryptoRandom()
-	{
-		_r = RandomNumberGenerator.Create();
-	}
-
-	/// <summary>
-	///
-	/// </summary>
-	/// <param name="buffer"></param>
-	/// <exception cref="ArgumentNullException"></exception>
 	public override void NextBytes(byte[] buffer)
 	{
-		if (buffer == null) throw new ArgumentNullException(nameof(buffer));
+		ArgumentNullException.ThrowIfNull(buffer);
 		_r.GetBytes(buffer);
 	}
 
-#if NETSTANDARD2_1
-        /// <inheritdoc/>
-        public override void NextBytes(Span<byte> buffer)
-        {
-            RandomNumberGenerator.Fill(buffer);
-        }
-#endif
+	/// <inheritdoc />
+	public override void NextBytes(Span<byte> buffer)
+	{
+		RandomNumberGenerator.Fill(buffer);
+	}
 
 	/// <inheritdoc />
-	/// <summary>
-	/// </summary>
-	/// <returns></returns>
 	public override double NextDouble()
 	{
-#if NETSTANDARD2_1
-            Span<byte> uint32Buffer = stackalloc byte[4];
-            RandomNumberGenerator.Fill(uint32Buffer);
-            return BitConverter.ToUInt32(uint32Buffer) / (1.0 + UInt32.MaxValue);
-#else
-		_r.GetBytes(_uint32Buffer);
-		return BitConverter.ToUInt32(_uint32Buffer, 0) / (1.0 + uint.MaxValue);
-#endif
+		Span<byte> uint32Buffer = stackalloc byte[4];
+		RandomNumberGenerator.Fill(uint32Buffer);
+		return BitConverter.ToUInt32(uint32Buffer) / (1.0 + uint.MaxValue);
 	}
 
 	/// <inheritdoc />

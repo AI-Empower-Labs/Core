@@ -35,18 +35,10 @@ public static class ConsoleApplicationRunner
 	{
 		return HostRunner
 			.Run<IHost, HostApplicationBuilder>(args, disableJasper,
-				arguments =>
-				{
-					HostApplicationBuilder builder = new(arguments);
-					configureBuilder?.Invoke(builder);
-					return builder;
-				},
-				hostApplicationBuilder =>
-				{
-					IHost host = hostApplicationBuilder.Build();
-					configureApplication?.Invoke(host);
-					return host;
-				},
+				arguments => new HostApplicationBuilder(arguments),
+				hostApplicationBuilder => hostApplicationBuilder.Build(),
+				configureBuilder,
+				configureApplication,
 				assemblies);
 	}
 }

@@ -25,6 +25,8 @@ public static class TestRunner
 		Func<THostApplicationBuilder, THost> build,
 		bool startHostedServices,
 		CancellationToken cancellationToken,
+		Action<THostApplicationBuilder>? configureBuilder = null,
+		Action<THost>? configureHost = null,
 		params Assembly[] assemblies)
 		where THost : IHost
 		where THostApplicationBuilder : IHostApplicationBuilder
@@ -33,6 +35,7 @@ public static class TestRunner
 		THost host = await HostBuilder.Build(args, create,
 			builder =>
 			{
+				configureBuilder?.Invoke(builder);
 				if (startHostedServices) return;
 				// Remove IHostedService service descriptors
 				foreach (ServiceDescriptor serviceDescriptor in builder.Services.ToArray())
@@ -43,7 +46,7 @@ public static class TestRunner
 					}
 				}
 			},
-			build, null, cancellationToken, assemblies);
+			build, configureHost, cancellationToken, assemblies);
 		await host.StartAsync(cancellationToken);
 		TestRunner<THost> testRunner = new(host);
 		testRunner.DisposableBag.Add(startup);

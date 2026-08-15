@@ -16,20 +16,12 @@ public static class HostTestRunner
 	{
 		return TestRunner.Start<IHost, HostApplicationBuilder>(
 			args,
-			strings =>
-			{
-				HostApplicationBuilder builder = new(strings);
-				configureBuilder?.Invoke(builder);
-				return builder;
-			},
-			hostApplicationBuilder =>
-			{
-				IHost host = hostApplicationBuilder.Build();
-				configureApplication?.Invoke(host);
-				return host;
-			},
+			strings => new HostApplicationBuilder(strings),
+			hostApplicationBuilder => hostApplicationBuilder.Build(),
 			startHostedServices,
 			cancellationToken,
+			configureBuilder,
+			configureApplication,
 			assemblies);
 	}
 }

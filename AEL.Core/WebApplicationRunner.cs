@@ -45,8 +45,6 @@ public static class WebApplicationRunner
 					WebApplicationBuilder builder = WebApplication.CreateBuilder(strings);
 					Log.Logger.Debug("Configuring Kestrel server header");
 					builder.WebHost.UseKestrel(options => options.AddServerHeader = false);
-					Log.Logger.Debug("Running web application builder configuration");
-					configureBuilder?.Invoke(builder);
 					Log.Logger.Debug("Web application builder created");
 					return builder;
 				},
@@ -54,11 +52,11 @@ public static class WebApplicationRunner
 				{
 					Log.Logger.Debug("Building web application");
 					WebApplication webApplication = webApplicationBuilder.Build();
-					Log.Logger.Debug("Running web application configuration");
-					configureApplication?.Invoke(webApplication);
 					Log.Logger.Debug("Web application built");
 					return webApplication;
 				},
+				configureBuilder,
+				configureApplication,
 				assemblies);
 	}
 }
