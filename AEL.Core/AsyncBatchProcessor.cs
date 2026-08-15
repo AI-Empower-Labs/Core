@@ -83,6 +83,7 @@ public abstract class AsyncBatchProcessor<TIn> : AsyncBackgroundService
 	{
 		if (cancellationToken.IsCancellationRequested)
 		{
+			await Task.FromCanceled(cancellationToken).ConfigureAwait(false);
 			return;
 		}
 
