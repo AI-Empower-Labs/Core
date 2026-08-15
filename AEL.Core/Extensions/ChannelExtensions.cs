@@ -41,34 +41,34 @@ public static class ChannelExtensions
 			{
 				foreach (ICollection<T> batch in MakeBatches())
 				{
-					yield return batch.ToArray();
+					yield return [.. batch];
 				}
 			}
 
 			// Empty queue
 			foreach (ICollection<T> batch in MakeBatches())
 			{
-				yield return batch.ToArray();
+				yield return [.. batch];
 			}
 
 			yield break;
 
 			IEnumerable<ICollection<T>> MakeBatches()
 			{
-				List<T> batch = new(maxBatchSize);
+				List<T> batch = [with(maxBatchSize)];
 				while (channel.Reader.TryRead(out T? item))
 				{
 					batch.Add(item);
 					if (batch.Count >= maxBatchSize)
 					{
-						yield return batch.ToArray();
+						yield return [.. batch];
 						batch.Clear();
 					}
 				}
 
 				if (batch.Count > 0)
 				{
-					yield return batch.ToArray();
+					yield return [.. batch];
 				}
 			}
 		}
@@ -81,7 +81,7 @@ public static class ChannelExtensions
 				throw new ArgumentOutOfRangeException(nameof(maxBatchSize), "maxBatchSize must be greater than 0.");
 			}
 
-			List<T> batch = new(maxBatchSize);
+			List<T> batch = [with(maxBatchSize)];
 			while (await channel.Reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
 			{
 				batch.Clear();
@@ -90,14 +90,14 @@ public static class ChannelExtensions
 					batch.Add(item);
 					if (batch.Count >= maxBatchSize)
 					{
-						yield return batch.ToArray();
+						yield return [.. batch];
 						batch.Clear();
 					}
 				}
 
 				if (batch.Count > 0)
 				{
-					yield return batch.ToArray();
+					yield return [.. batch];
 				}
 			}
 		}

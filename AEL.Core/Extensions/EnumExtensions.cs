@@ -37,10 +37,11 @@ public static class EnumExtensions
 
 	public static string[] GetEnumNames<T>()
 		where T : struct, Enum =>
-		FastEnum
+	[
+		.. FastEnum
 			.GetMembers<T>()
 			.Select(member => member.EnumMemberAttribute?.Value ?? member.Name)
-			.ToArray();
+	];
 
 	public static string GetEnumName<T>(this T value)
 		where T : struct, Enum
@@ -51,13 +52,14 @@ public static class EnumExtensions
 
 	public static string[] GetEnumNames<T>(T[] allowedValues)
 		where T : struct, Enum =>
-		allowedValues
+	[
+		.. allowedValues
 			.Select(static @enum =>
 			{
 				Member<T>? member = FastEnum.GetMember(@enum);
 				return member?.EnumMemberAttribute?.Value ?? member?.Name ?? @enum.ToString();
 			})
-			.ToArray();
+	];
 
 	private static readonly IDictionary<Type, object> s_enumToValueMap = new Dictionary<Type, object>();
 	private static FrozenDictionary<string, T> GetEnumMemberLookup<T>()

@@ -48,16 +48,18 @@ public static class ServiceRegistrationExtensions
 
 	private static Type[] TypesToRegister(Type type)
 	{
-		return type
-			.GetInterfaces()
-			.Where(t => t != typeof(IScopedService)
-				&& t != typeof(ITransientService)
-				&& t != typeof(ISingletonService)
-				&& t != typeof(IValidator)
-				&& t != typeof(IDisposable)
-				&& t != typeof(IAsyncDisposable)
-				&& !t.IsBasedOn(typeof(IEnumerable))
-				&& !t.IsBasedOn(typeof(IAsyncEnumerable<>)))
-			.ToArray();
+		return
+		[
+			.. type
+				.GetInterfaces()
+				.Where(t => t != typeof(IScopedService)
+					&& t != typeof(ITransientService)
+					&& t != typeof(ISingletonService)
+					&& t != typeof(IValidator)
+					&& t != typeof(IDisposable)
+					&& t != typeof(IAsyncDisposable)
+					&& !t.IsBasedOn(typeof(IEnumerable))
+					&& !t.IsBasedOn(typeof(IAsyncEnumerable<>)))
+		];
 	}
 }

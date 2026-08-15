@@ -162,7 +162,7 @@ public abstract class AsyncBatchProcessor<TIn> : AsyncBackgroundService
 			}
 
 			// Filter out items canceled by callers to avoid wasted work
-			List<(TIn Value, TaskCompletionSource Tcs)> active = new(capacity: batch.Count);
+			List<(TIn Value, TaskCompletionSource Tcs)> active = [with(capacity: batch.Count)];
 			foreach ((TIn Value, TaskCompletionSource TaskCompletionSource) item in batch)
 			{
 				if (item.TaskCompletionSource.Task is not { IsCanceled: false, IsCompleted: false }) continue;
@@ -176,7 +176,7 @@ public abstract class AsyncBatchProcessor<TIn> : AsyncBackgroundService
 
 			try
 			{
-				TIn[] inputs = active.Select(tuple => tuple.Value).ToArray();
+				TIn[] inputs = [.. active.Select(tuple => tuple.Value)];
 				await ExecuteBatchProcess(inputs, stoppingToken).ConfigureAwait(false);
 
 				for (int i = 0; i < active.Count; i++)
