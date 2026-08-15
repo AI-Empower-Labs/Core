@@ -144,6 +144,36 @@ public sealed class ProgressStreamTests
 	}
 
 	[Fact]
+	public void Read_PreservesShortReads()
+	{
+		byte[] source = [1, 2, 3, 4];
+		using OneByteAtATimeStream inner = new(source);
+		using ProgressStream stream = new(inner, null, null);
+
+		byte[] buffer = new byte[8];
+		int bytesRead = stream.Read(buffer, 0, buffer.Length);
+
+		Assert.Equal(1, bytesRead);
+		Assert.Equal(1, buffer[0]);
+		Assert.Equal(1, inner.Position);
+	}
+
+	[Fact]
+	public async Task ReadAsync_PreservesShortReads()
+	{
+		byte[] source = [1, 2, 3, 4];
+		await using OneByteAtATimeStream inner = new(source);
+		await using ProgressStream stream = new(inner, null, null);
+
+		byte[] buffer = new byte[8];
+		int bytesRead = await stream.ReadAsync(buffer, TestContext.Current.CancellationToken);
+
+		Assert.Equal(1, bytesRead);
+		Assert.Equal(1, buffer[0]);
+		Assert.Equal(1, inner.Position);
+	}
+
+	[Fact]
 	public async Task Write()
 	{
 		byte[] buffer = new byte[1024760];
@@ -203,5 +233,45 @@ public sealed class ProgressStreamTests
 		}
 
 		Assert.Equal(inputStream.Length, bytesReadOverall);
+	}
+
+	private sealed class OneByteAtATimeStream(byte[] data) : System.IO.Stream
+	{
+		private int _position;
+
+		public override bool CanRead => true;
+		public override bool CanSeek => false;
+		public override bool CanWrite => false;
+		public override long Length => data.Length;
+
+		public override long Position
+		{
+			get => _position;
+			set => throw new NotSupportedException();
+		}
+
+		public override int Read(byte[] buffer, int offset, int count)
+		{
+			if (count == 0 || _position >= data.Length)
+			{
+				return 0;
+			}
+
+			buffer[offset] = data[_position++];
+			return 1;
+		}
+
+		public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+		{
+			return Task.FromResult(Read(buffer, offset, count));
+		}
+
+		public override void Flush()
+		{
+		}
+
+		public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+		public override void SetLength(long value) => throw new NotSupportedException();
+		public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
 	}
 }

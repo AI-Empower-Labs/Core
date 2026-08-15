@@ -14,14 +14,14 @@ public static class StringExtensions
 	{
 		public string ToPascalCase()
 		{
-			if (text.Length == 0 || char.IsLower(text[0]))
+			if (text.Length == 0)
 			{
 				return text;
 			}
 
 			return text.Length == 1
-				? $"{char.ToLowerInvariant(text[0])}"
-				: $"{char.ToLowerInvariant(text[0])}{text[1..]}";
+				? char.ToUpperInvariant(text[0]).ToString()
+				: $"{char.ToUpperInvariant(text[0])}{text[1..]}";
 		}
 
 		public T? SafeDeserialize<T>(ILogger? logger = null)
@@ -90,7 +90,7 @@ public static class StringExtensions
 				}
 			}
 
-			return builder.ToString().Trim('n');
+			return builder.ToString().Trim('\n');
 		}
 	}
 

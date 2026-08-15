@@ -32,49 +32,18 @@ public sealed class ProgressStream(
 	public override int Read(byte[] buffer, int offset, int count)
 	{
 		ValidateBufferArgs(buffer, offset, count);
-
-		int totalBytesRead = 0;
-
-		while (totalBytesRead < count)
-		{
-			int bytesRead = stream.Read(buffer, offset + totalBytesRead, count - totalBytesRead);
-
-			if (bytesRead == 0)
-			{
-				break; // end of stream
-			}
-
-			totalBytesRead += bytesRead;
-		}
-
-		UpdateReadBytes(totalBytesRead);
-
-		return totalBytesRead;
+		int bytesRead = stream.Read(buffer, offset, count);
+		UpdateReadBytes(bytesRead);
+		return bytesRead;
 	}
 
 	/// <inheritdoc />
 	public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
 	{
 		ValidateBufferArgs(buffer, offset, count);
-
-		int totalBytesRead = 0;
-
-		while (totalBytesRead < count)
-		{
-			int bytesRead = await stream.ReadAsync(
-				buffer.AsMemory(offset + totalBytesRead, count - totalBytesRead),
-				cancellationToken);
-			if (bytesRead == 0)
-			{
-				break; // end of stream
-			}
-
-			totalBytesRead += bytesRead;
-		}
-
-		UpdateReadBytes(totalBytesRead);
-
-		return totalBytesRead;
+		int bytesRead = await stream.ReadAsync(buffer.AsMemory(offset, count), cancellationToken);
+		UpdateReadBytes(bytesRead);
+		return bytesRead;
 	}
 
 	/// <inheritdoc />

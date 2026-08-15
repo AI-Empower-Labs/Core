@@ -17,8 +17,15 @@ public class StringExtensionsTests
     public void Sanitize_RemovesControlAndEmptyLines()
     {
         string input = "line1\n\nline2\r\nline3\x01\x02\n";
-        string expected = "line1\nline2\nline3\n";
+        string expected = "line1\nline2\nline3";
         Assert.Equal(expected, input.Sanitize());
+    }
+
+    [Fact]
+    public void Sanitize_PreservesLeadingAndTrailingLetterN()
+    {
+        Assert.Equal("name", "name".Sanitize());
+        Assert.Equal("noon", "noon".Sanitize());
     }
 
     [Fact]

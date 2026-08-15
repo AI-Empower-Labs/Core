@@ -63,4 +63,20 @@ public class FluentValidationExtensionsTests
 		ValidationResult? res2 = v.Validate(tooLong);
 		Assert.Contains(res2.Errors, e => e.PropertyName == nameof(Model.Name));
 	}
+
+	[Fact]
+	public void MustBeAbsoluteUri_RejectsRelativeUri()
+	{
+		ModelValidator validator = new();
+		Model model = new()
+		{
+			Address = new Uri("/rel", UriKind.Relative),
+			Mode = "on",
+			Choice = TestEnum.A,
+			Name = "Ab"
+		};
+
+		ValidationResult result = validator.Validate(model);
+		Assert.Contains(result.Errors, error => error.PropertyName == nameof(Model.Address));
+	}
 }
