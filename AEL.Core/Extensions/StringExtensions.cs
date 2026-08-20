@@ -1,9 +1,4 @@
 ﻿using System.Text;
-using System.Text.Json;
-
-using AEL.Core.Json;
-
-using Microsoft.Extensions.Logging;
 
 // ReSharper disable once CheckNamespace
 namespace System;
@@ -22,33 +17,6 @@ public static class StringExtensions
 			return text.Length == 1
 				? char.ToUpperInvariant(text[0]).ToString()
 				: $"{char.ToUpperInvariant(text[0])}{text[1..]}";
-		}
-
-		public T? SafeDeserialize<T>(ILogger? logger = null)
-		{
-			try
-			{
-				return JsonSerializer.Deserialize<T>(text);
-			}
-			catch (Exception firstException)
-			{
-				string repaired = new JsonRepair().RepairJson(text);
-				if (string.IsNullOrEmpty(repaired) || repaired.Equals("[]"))
-				{
-					return default;
-				}
-
-				try
-				{
-					return JsonSerializer.Deserialize<T>(repaired);
-				}
-				catch (Exception exception)
-				{
-					Diagnostics.Debug.WriteLine("Error while deserializing JSON element: {Json}", text);
-					logger?.LogError(new AggregateException(firstException, exception), "Error while deserializing JSON element: {Json}", text);
-					return default;
-				}
-			}
 		}
 	}
 
