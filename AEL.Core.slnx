@@ -5,7 +5,6 @@
 		<File Path=".github\workflows\core.yml" />
 		<File Path=".github\workflows\docling.yml" />
 	</Folder>
-	<Project Path="AEL.Core.Docling/AEL.Core.Docling.csproj" />
 	<Project Path="AEL.Core.Tests\AEL.Core.Tests.csproj" />
 	<Project Path="AEL.Core\AEL.Core.csproj" />
 </Solution>
