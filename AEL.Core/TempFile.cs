@@ -14,7 +14,14 @@ public sealed class TempFile : DisposableBase
 		{
 			if (File.Exists(FileName))
 			{
-				File.Delete(FileName);
+				try
+				{
+					File.Delete(FileName);
+				}
+				catch (IOException)
+				{
+					// Ignore if file is in use or already deleted
+				}
 			}
 		});
 	}
