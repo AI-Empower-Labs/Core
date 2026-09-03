@@ -17,6 +17,5 @@
 		<NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
 		<TargetFramework>net10.0</TargetFramework>
 		<ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
-		<RuntimeIdentifier>linux-x64</RuntimeIdentifier>
 	</PropertyGroup>
 </Project>
