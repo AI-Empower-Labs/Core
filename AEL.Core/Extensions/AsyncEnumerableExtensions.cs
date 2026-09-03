@@ -27,72 +27,110 @@ public static class AsyncEnumerableExtensions
 		public async IAsyncEnumerable<ICollection<T>> Batch(int batchSize,
 			[EnumeratorCancellation] CancellationToken cancellationToken = default)
 		{
+			ArgumentOutOfRangeException.ThrowIfLessThan(batchSize, 1);
+
 			Channel<T> channel = Channel.CreateBounded<T>(batchSize);
-			Task producerTask = Producer();
-			await foreach (ICollection<T> collection in channel.ReadAllBatch(batchSize, cancellationToken))
+			using CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+			Task producerTask = Producer(linkedCts.Token);
+
+			try
 			{
-				yield return collection;
+				await foreach (ICollection<T> collection in channel.ReadAllBatch(batchSize, linkedCts.Token))
+				{
+					yield return collection;
+				}
+			}
+			finally
+			{
+				await linkedCts.CancelAsync();
+				channel.Writer.TryComplete();
+				try
+				{
+					await producerTask;
+				}
+				catch (OperationCanceledException)
+				{
+					// Ignore cancellation during teardown
+				}
 			}
 
-			await producerTask;
+			yield break;
 
-			async Task Producer()
+			async Task Producer(CancellationToken token)
 			{
 				try
 				{
-					await foreach (T t in enumerable.WithCancellation(cancellationToken))
+					await foreach (T t in enumerable.WithCancellation(token))
 					{
-						await channel.Writer.WriteAsync(t, cancellationToken);
+						await channel.Writer.WriteAsync(t, token);
 					}
 				}
-				catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+				catch (OperationCanceledException) when (token.IsCancellationRequested)
 				{
 					// Ignore
 				}
 				catch (Exception ex)
 				{
 					channel.Writer.TryComplete(ex);
+					return;
 				}
-				finally
-				{
-					channel.Writer.TryComplete();
-				}
+
+				channel.Writer.TryComplete();
 			}
 		}
 
 		public async IAsyncEnumerable<ICollection<T>> BatchWithDrain(int batchSize,
 			[EnumeratorCancellation] CancellationToken cancellationToken = default)
 		{
+			ArgumentOutOfRangeException.ThrowIfLessThan(batchSize, 1);
+
 			Channel<T> channel = Channel.CreateBounded<T>(batchSize);
-			Task producerTask = Producer();
-			await foreach (ICollection<T> collection in channel.ReadAllBatchDrain(batchSize, cancellationToken))
+			using CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+			Task producerTask = Producer(linkedCts.Token);
+
+			try
 			{
-				yield return collection;
+				await foreach (ICollection<T> collection in channel.ReadAllBatchDrain(batchSize, linkedCts.Token))
+				{
+					yield return collection;
+				}
+			}
+			finally
+			{
+				await linkedCts.CancelAsync();
+				channel.Writer.TryComplete();
+				try
+				{
+					await producerTask;
+				}
+				catch (OperationCanceledException)
+				{
+					// Ignore cancellation during teardown
+				}
 			}
 
-			await producerTask;
+			yield break;
 
-			async Task Producer()
+			async Task Producer(CancellationToken token)
 			{
 				try
 				{
-					await foreach (T t in enumerable.WithCancellation(cancellationToken))
+					await foreach (T t in enumerable.WithCancellation(token))
 					{
-						await channel.Writer.WriteAsync(t, cancellationToken);
+						await channel.Writer.WriteAsync(t, token);
 					}
 				}
-				catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+				catch (OperationCanceledException) when (token.IsCancellationRequested)
 				{
 					// Ignore
 				}
 				catch (Exception ex)
 				{
 					channel.Writer.TryComplete(ex);
+					return;
 				}
-				finally
-				{
-					channel.Writer.TryComplete();
-				}
+
+				channel.Writer.TryComplete();
 			}
 		}
 
@@ -101,34 +139,112 @@ public static class AsyncEnumerableExtensions
 			int maxDegreeOfParallelism = 4,
 			[EnumeratorCancellation] CancellationToken cancellationToken = default)
 		{
+			ArgumentOutOfRangeException.ThrowIfLessThan(maxDegreeOfParallelism, 1);
+			ArgumentNullException.ThrowIfNull(selector);
+
 			Queue<Task<TResult>> queue = new();
 			using SemaphoreSlim semaphore = new(maxDegreeOfParallelism);
-
 			using CancellationTokenSource tokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-			await foreach (T item in enumerable.WithCancellation(cancellationToken))
+
+			try
 			{
-				await semaphore.WaitAsync(cancellationToken);
-
-				// Define the task
-				Task<TResult> task = Task.Run(async () =>
+				await foreach (T item in enumerable.WithCancellation(tokenSource.Token))
 				{
-					try { return await selector(item, tokenSource.Token); }
-					finally { semaphore.Release(); }
-				}, cancellationToken);
+					await semaphore.WaitAsync(tokenSource.Token);
 
-				queue.Enqueue(task);
+					queue.Enqueue(RunSelector(item, tokenSource.Token, semaphore));
 
-				// While the oldest task in the queue is finished, yield it
-				while (queue.Count > 0 && queue.Peek().IsCompleted)
+					while (queue.Count > 0 && queue.Peek().IsCompleted)
+					{
+						yield return await DequeueHandled(queue, tokenSource);
+					}
+				}
+
+				while (queue.Count > 0)
 				{
-					yield return await queue.Dequeue();
+					yield return await DequeueHandled(queue, tokenSource);
+				}
+			}
+			finally
+			{
+				await tokenSource.CancelAsync();
+				while (queue.Count > 0)
+				{
+					Task<TResult> task = queue.Dequeue();
+					try
+					{
+						await task;
+					}
+					catch
+					{
+						// Ignore exceptions from canceled/in-flight tasks during teardown
+					}
 				}
 			}
 
-			// Yield remaining tasks
-			while (queue.Count > 0)
+			yield break;
+
+			async Task<TResult> RunSelector(T item, CancellationToken token, SemaphoreSlim concurrencyLimiter)
 			{
-				yield return await queue.Dequeue();
+				try
+				{
+					return await selector(item, token);
+				}
+				finally
+				{
+					try
+					{
+						concurrencyLimiter.Release();
+					}
+					catch (ObjectDisposedException)
+					{
+						// Ignore in case of teardown
+					}
+				}
+			}
+
+			static async Task<TResult> DequeueHandled(Queue<Task<TResult>> q, CancellationTokenSource cts)
+			{
+				Task<TResult> task = q.Dequeue();
+				try
+				{
+					return await task;
+				}
+				catch (OperationCanceledException) when (cts.IsCancellationRequested)
+				{
+					throw;
+				}
+				catch (Exception e)
+				{
+					await cts.CancelAsync();
+
+					List<Exception> exceptions = [];
+					while (q.Count > 0)
+					{
+						Task<TResult> remaining = q.Dequeue();
+						try
+						{
+							await remaining;
+						}
+						catch (OperationCanceledException)
+						{
+							// Ignore cancellation of other tasks during abort
+						}
+						catch (Exception ee)
+						{
+							exceptions.Add(ee);
+						}
+					}
+
+					if (e is OperationCanceledException && exceptions.Count == 0)
+					{
+						throw;
+					}
+
+					throw exceptions.Count > 0
+						? new AggregateException(exceptions.Prepend(e))
+						: e;
+				}
 			}
 		}
 	}
