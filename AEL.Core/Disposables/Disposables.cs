@@ -38,20 +38,15 @@ public sealed class Disposables
 
 	public static IAsyncDisposable CreateAsync<T>(T state, Func<T, CancellationToken, Task> func)
 	{
+		ArgumentNullException.ThrowIfNull(func);
 		AsyncDisposableBag result = new();
-		CancellationTokenSource cancellationTokenSource = new();
-		result.Add(() =>
-		{
-			cancellationTokenSource.Cancel();
-			cancellationTokenSource.Dispose();
-		});
-		CancellationToken cancellationToken = cancellationTokenSource.Token;
-		result.Add(() => func(state, cancellationToken));
+		result.Add(cancellationToken => func(state, cancellationToken));
 		return result;
 	}
 
 	public static IAsyncDisposable CreateAsync(Func<CancellationToken, Task> func)
 	{
+		ArgumentNullException.ThrowIfNull(func);
 		return CreateAsync<object?>(null, (_, token) => func(token));
 	}
 
