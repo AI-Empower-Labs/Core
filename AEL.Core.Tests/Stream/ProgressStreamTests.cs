@@ -29,11 +29,7 @@ public sealed class ProgressStreamTests
 
 		System.IO.Stream inputStream = new MemoryStream();
 
-		int bytesReadOverall = 0;
-		void WriteProgress(int bytesRead)
-		{
-			bytesReadOverall += bytesRead;
-		}
+		long bytesReadOverall = 0;
 
 		await using MemoryStream stream = new(new byte[1_000_000]);
 		await using ProgressStream outputStream = new(inputStream, null, writeProgress: WriteProgress);
@@ -53,6 +49,12 @@ public sealed class ProgressStreamTests
 		await outputStream.FlushAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(inputStream.Length, bytesReadOverall);
+		return;
+
+		void WriteProgress(int bytesRead)
+		{
+			bytesReadOverall += bytesRead;
+		}
 	}
 
 	[Fact]
@@ -88,11 +90,7 @@ public sealed class ProgressStreamTests
 
 		System.IO.Stream inputStream = new MemoryStream(new byte[1_000_000]);
 
-		int bytesReadOverall = 0;
-		void WriteProgress(int bytesRead)
-		{
-			bytesReadOverall = bytesRead;
-		}
+		long bytesReadOverall = 0;
 
 		await using ProgressStream stream = new(inputStream, WriteProgress, null);
 		await using MemoryStream outputStream = new();
@@ -110,6 +108,12 @@ public sealed class ProgressStreamTests
 		}
 
 		Assert.Equal(inputStream.Length, bytesReadOverall);
+		return;
+
+		void WriteProgress(int bytesRead)
+		{
+			bytesReadOverall = bytesRead;
+		}
 	}
 
 	[Fact]
@@ -119,11 +123,7 @@ public sealed class ProgressStreamTests
 
 		System.IO.Stream inputStream = new MemoryStream(new byte[1_000_000]);
 
-		int bytesReadOverall = 0;
-		void WriteProgress(int bytesRead)
-		{
-			bytesReadOverall = bytesRead;
-		}
+		long bytesReadOverall = 0;
 
 		await using ProgressStream stream = new(inputStream, WriteProgress, null);
 		await using MemoryStream outputStream = new();
@@ -141,6 +141,12 @@ public sealed class ProgressStreamTests
 		}
 
 		Assert.Equal(inputStream.Length, bytesReadOverall);
+		return;
+
+		void WriteProgress(int bytesRead)
+		{
+			bytesReadOverall = bytesRead;
+		}
 	}
 
 	[Fact]
@@ -180,11 +186,7 @@ public sealed class ProgressStreamTests
 
 		System.IO.Stream inputStream = new MemoryStream();
 
-		int bytesReadOverall = 0;
-		void WriteProgress(int bytesRead)
-		{
-			bytesReadOverall += bytesRead;
-		}
+		long bytesReadOverall = 0;
 
 		await using MemoryStream stream = new(new byte[1_000_000]);
 		await using ProgressStream outputStream = new(inputStream, null, WriteProgress);
@@ -202,6 +204,12 @@ public sealed class ProgressStreamTests
 		}
 
 		Assert.Equal(inputStream.Length, bytesReadOverall);
+		return;
+
+		void WriteProgress(int bytesRead)
+		{
+			bytesReadOverall += bytesRead;
+		}
 	}
 
 	[Fact]
@@ -211,11 +219,7 @@ public sealed class ProgressStreamTests
 
 		System.IO.Stream inputStream = new MemoryStream();
 
-		int bytesReadOverall = 0;
-		void WriteProgress(int bytesRead)
-		{
-			bytesReadOverall += bytesRead;
-		}
+		long bytesReadOverall = 0;
 
 		await using MemoryStream stream = new(new byte[1_000_000]);
 		await using ProgressStream outputStream = new(inputStream, null, WriteProgress);
@@ -233,6 +237,12 @@ public sealed class ProgressStreamTests
 		}
 
 		Assert.Equal(inputStream.Length, bytesReadOverall);
+		return;
+
+		void WriteProgress(int bytesRead)
+		{
+			bytesReadOverall += bytesRead;
+		}
 	}
 
 	private sealed class OneByteAtATimeStream(byte[] data) : System.IO.Stream

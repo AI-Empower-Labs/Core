@@ -122,7 +122,7 @@ Core/
 ### Utilities
 
 - **Nanoid** (`NanoIdGenerator.cs`): Generate unique, URL-safe identifiers
-- **ContinuousHash**: Incremental hashing
+- **ContinuousHash** (Obsolete): Use `System.Security.Cryptography.IncrementalHash` instead
 - **TempFile**: Temporary file creation and management
 - **ProgressStream**: Stream wrapper tracking read/write byte progress
 - **FileNameHelper**: Sanitize file names for the local filesystem
