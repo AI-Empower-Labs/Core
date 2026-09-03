@@ -37,7 +37,10 @@ public static class HostApplicationBuilderExtensions
 			if (type.IsBasedOn(typeof(IDependencyInjectionRegistration<THostApplicationBuilder>)))
 			{
 				Log.Logger.Debug("Running dependency injection registration {Type}", type.FullName);
-				MethodInfo? methodInfo = type.GetMethod(nameof(IDependencyInjectionRegistration<>.Register));
+				MethodInfo? methodInfo = type.GetMethod(
+					nameof(IDependencyInjectionRegistration<>.Register),
+					BindingFlags.Public | BindingFlags.Static,
+					[typeof(THostApplicationBuilder)]);
 				if (methodInfo is null || methodInfo.ReturnType != typeof(void))
 				{
 					throw new InvalidOperationException(
@@ -55,16 +58,26 @@ public static class HostApplicationBuilderExtensions
 			if (type.IsBasedOn(typeof(IDependencyInjectionRegistrationAsync<THostApplicationBuilder>)))
 			{
 				Log.Logger.Debug("Running async dependency injection registration {Type}", type.FullName);
-				MethodInfo? methodInfo = type.GetMethod(nameof(IDependencyInjectionRegistrationAsync<>.Register));
-				if (methodInfo is null || methodInfo.ReturnType != typeof(ValueTask))
+				MethodInfo? methodInfo = type.GetMethod(
+					nameof(IDependencyInjectionRegistrationAsync<>.Register),
+					BindingFlags.Public | BindingFlags.Static,
+					[typeof(THostApplicationBuilder), typeof(CancellationToken)])
+					?? type.GetMethod(
+						nameof(IDependencyInjectionRegistrationAsync<>.Register),
+						BindingFlags.Public | BindingFlags.Static,
+						[typeof(THostApplicationBuilder)]);
+				if (methodInfo is null || (methodInfo.ReturnType != typeof(ValueTask) && methodInfo.ReturnType != typeof(Task)))
 				{
 					throw new InvalidOperationException(
 						$"Type {type.FullName} implements {nameof(IDependencyInjectionRegistrationAsync<>)}<{typeof(THostApplicationBuilder).Name}> " +
-						$"but does not declare: public static ValueTask {nameof(IDependencyInjectionRegistrationAsync<>.Register)}({typeof(THostApplicationBuilder).Name} builder).");
+						$"but does not declare: public static ValueTask {nameof(IDependencyInjectionRegistrationAsync<>.Register)}({typeof(THostApplicationBuilder).Name} builder, CancellationToken cancellationToken).");
 				}
 
 				int beforeCount = builder.Services.Count;
-				object? valueTaskObject = methodInfo.Invoke(null, [builder, cancellationToken]);
+				object?[] parameters = methodInfo.GetParameters().Length == 2
+					? [builder, cancellationToken]
+					: [builder];
+				object? valueTaskObject = methodInfo.Invoke(null, parameters);
 				if (valueTaskObject is ValueTask valueTask)
 				{
 					await valueTask;
