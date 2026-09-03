@@ -61,19 +61,16 @@ public static class EnumExtensions
 			})
 	];
 
-	private static readonly IDictionary<Type, object> s_enumToValueMap = new Dictionary<Type, object>();
-	private static FrozenDictionary<string, T> GetEnumMemberLookup<T>()
-		where T : struct, Enum
+	private static class EnumMemberCache<T> where T : struct, Enum
 	{
-		if (s_enumToValueMap.TryGetValue(typeof(T), out object? g)
-			&& g is FrozenDictionary<string, T> enumMemberLookup)
-		{
-			return enumMemberLookup;
-		}
-
-		s_enumToValueMap[typeof(T)] = enumMemberLookup = FastEnum
+		public static readonly FrozenDictionary<string, T> Value = FastEnum
 			.GetMembers<T>()
-			.ToFrozenDictionary(member => member.EnumMemberAttribute?.Value ?? member.Name, member => member.Value);
-		return enumMemberLookup;
+			.ToFrozenDictionary(
+				member => member.EnumMemberAttribute?.Value ?? member.Name,
+				member => member.Value,
+				StringComparer.OrdinalIgnoreCase);
 	}
+
+	private static FrozenDictionary<string, T> GetEnumMemberLookup<T>()
+		where T : struct, Enum => EnumMemberCache<T>.Value;
 }
