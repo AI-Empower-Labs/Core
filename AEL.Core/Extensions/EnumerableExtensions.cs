@@ -30,24 +30,44 @@ public static class EnumerableExtensions
 			[EnumeratorCancellation] CancellationToken cancellationToken = default) where TResult : notnull
 		{
 			ArgumentOutOfRangeException.ThrowIfLessThan(maxDegreeOfParallelism, 1);
+			ArgumentNullException.ThrowIfNull(selector);
 
 			Queue<Task<TResult>> queue = new();
 			using SemaphoreSlim semaphore = new(maxDegreeOfParallelism);
 			using CancellationTokenSource tokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-			foreach (T item in source)
+			try
 			{
-				await semaphore.WaitAsync(tokenSource.Token).ConfigureAwait(false);
-				queue.Enqueue(RunSelector(item, tokenSource.Token, semaphore));
-				while (queue.Count > 0 && queue.Peek().IsCompleted)
+				foreach (T item in source)
 				{
-					yield return await DequeueHandled(tokenSource).ConfigureAwait(false);
+					await semaphore.WaitAsync(tokenSource.Token).ConfigureAwait(false);
+					queue.Enqueue(RunSelector(item, tokenSource.Token, semaphore));
+					while (queue.Count > 0 && queue.Peek().IsCompleted)
+					{
+						yield return await DequeueHandled(queue, tokenSource).ConfigureAwait(false);
+					}
+				}
+
+				while (queue.Count > 0)
+				{
+					yield return await DequeueHandled(queue, tokenSource).ConfigureAwait(false);
 				}
 			}
-
-			while (queue.Count > 0)
+			finally
 			{
-				yield return await DequeueHandled(tokenSource).ConfigureAwait(false);
+				await tokenSource.CancelAsync();
+				while (queue.Count > 0)
+				{
+					Task<TResult> remaining = queue.Dequeue();
+					try
+					{
+						await remaining.ConfigureAwait(false);
+					}
+					catch
+					{
+						// Ignore exceptions from canceled/in-flight tasks during teardown
+					}
+				}
 			}
 
 			yield break;
@@ -60,15 +80,27 @@ public static class EnumerableExtensions
 				}
 				finally
 				{
-					concurrencyLimiter.Release();
+					try
+					{
+						concurrencyLimiter.Release();
+					}
+					catch (ObjectDisposedException)
+					{
+						// Ignore in case of teardown
+					}
 				}
 			}
 
-			async Task<TResult> DequeueHandled(CancellationTokenSource cancellationTokenSource)
+			static async Task<TResult> DequeueHandled(Queue<Task<TResult>> q, CancellationTokenSource cancellationTokenSource)
 			{
+				Task<TResult> task = q.Dequeue();
 				try
 				{
-					return await queue.Dequeue().ConfigureAwait(false);
+					return await task.ConfigureAwait(false);
+				}
+				catch (OperationCanceledException) when (cancellationTokenSource.IsCancellationRequested)
+				{
+					throw;
 				}
 				catch (Exception e)
 				{
@@ -76,13 +108,31 @@ public static class EnumerableExtensions
 
 					// Observe remaining tasks to prevent UnobservedTaskException
 					List<Exception> exceptions = [];
-					foreach (Task<TResult> remaining in queue)
+					while (q.Count > 0)
 					{
-						try { await remaining.ConfigureAwait(false); }
-						catch (Exception ee) { exceptions.Add(ee); }
+						Task<TResult> remaining = q.Dequeue();
+						try
+						{
+							await remaining.ConfigureAwait(false);
+						}
+						catch (OperationCanceledException)
+						{
+							// Ignore cancellation of other tasks during abort
+						}
+						catch (Exception ee)
+						{
+							exceptions.Add(ee);
+						}
 					}
 
-					throw new AggregateException(exceptions.Prepend(e));
+					if (e is OperationCanceledException && exceptions.Count == 0)
+					{
+						throw;
+					}
+
+					throw exceptions.Count > 0
+						? new AggregateException(exceptions.Prepend(e))
+						: e;
 				}
 			}
 		}
@@ -93,24 +143,44 @@ public static class EnumerableExtensions
 			[EnumeratorCancellation] CancellationToken cancellationToken = default) where TResult : notnull
 		{
 			ArgumentOutOfRangeException.ThrowIfLessThan(maxDegreeOfParallelism, 1);
+			ArgumentNullException.ThrowIfNull(selector);
 
 			Queue<Task<TResult?>> queue = new();
 			using SemaphoreSlim semaphore = new(maxDegreeOfParallelism);
 			using CancellationTokenSource tokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-			foreach (T item in source)
+			try
 			{
-				await semaphore.WaitAsync(tokenSource.Token).ConfigureAwait(false);
-				queue.Enqueue(RunSelector(item, tokenSource.Token, semaphore));
-				while (queue.Count > 0 && queue.Peek().IsCompleted)
+				foreach (T item in source)
 				{
-					yield return await DequeueHandled(tokenSource).ConfigureAwait(false);
+					await semaphore.WaitAsync(tokenSource.Token).ConfigureAwait(false);
+					queue.Enqueue(RunSelector(item, tokenSource.Token, semaphore));
+					while (queue.Count > 0 && queue.Peek().IsCompleted)
+					{
+						yield return await DequeueHandled(queue, tokenSource).ConfigureAwait(false);
+					}
+				}
+
+				while (queue.Count > 0)
+				{
+					yield return await DequeueHandled(queue, tokenSource).ConfigureAwait(false);
 				}
 			}
-
-			while (queue.Count > 0)
+			finally
 			{
-				yield return await DequeueHandled(tokenSource).ConfigureAwait(false);
+				await tokenSource.CancelAsync();
+				while (queue.Count > 0)
+				{
+					Task<TResult?> remaining = queue.Dequeue();
+					try
+					{
+						await remaining.ConfigureAwait(false);
+					}
+					catch
+					{
+						// Ignore exceptions from canceled/in-flight tasks during teardown
+					}
+				}
 			}
 
 			yield break;
@@ -123,15 +193,27 @@ public static class EnumerableExtensions
 				}
 				finally
 				{
-					concurrencyLimiter.Release();
+					try
+					{
+						concurrencyLimiter.Release();
+					}
+					catch (ObjectDisposedException)
+					{
+						// Ignore in case of teardown
+					}
 				}
 			}
 
-			async Task<TResult?> DequeueHandled(CancellationTokenSource cancellationTokenSource)
+			static async Task<TResult?> DequeueHandled(Queue<Task<TResult?>> q, CancellationTokenSource cancellationTokenSource)
 			{
+				Task<TResult?> task = q.Dequeue();
 				try
 				{
-					return await queue.Dequeue().ConfigureAwait(false);
+					return await task.ConfigureAwait(false);
+				}
+				catch (OperationCanceledException) when (cancellationTokenSource.IsCancellationRequested)
+				{
+					throw;
 				}
 				catch (Exception e)
 				{
@@ -139,13 +221,31 @@ public static class EnumerableExtensions
 
 					// Observe remaining tasks to prevent UnobservedTaskException
 					List<Exception> exceptions = [];
-					foreach (Task<TResult?> remaining in queue)
+					while (q.Count > 0)
 					{
-						try { await remaining.ConfigureAwait(false); }
-						catch (Exception ee) { exceptions.Add(ee); }
+						Task<TResult?> remaining = q.Dequeue();
+						try
+						{
+							await remaining.ConfigureAwait(false);
+						}
+						catch (OperationCanceledException)
+						{
+							// Ignore cancellation of other tasks during abort
+						}
+						catch (Exception ee)
+						{
+							exceptions.Add(ee);
+						}
 					}
 
-					throw new AggregateException(exceptions.Prepend(e));
+					if (e is OperationCanceledException && exceptions.Count == 0)
+					{
+						throw;
+					}
+
+					throw exceptions.Count > 0
+						? new AggregateException(exceptions.Prepend(e))
+						: e;
 				}
 			}
 		}
