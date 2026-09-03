@@ -3,14 +3,15 @@ namespace AEL.Core.Stream;
 public static class ProgressHelpers
 {
 	public static (double Percent, double BitsPerSecond, double BytesPerSecond) CalculateProgress(
-		int bytesSoFar,
-		int lastBytesSoFar,
+		long bytesSoFar,
+		long lastBytesSoFar,
 		long totalBytes,
 		TimeSpan timeSinceLast)
 	{
-		double getBytesPerSecond = (bytesSoFar - lastBytesSoFar) / timeSinceLast.TotalSeconds;
+		double seconds = timeSinceLast.TotalSeconds;
+		double getBytesPerSecond = seconds > 0 ? (bytesSoFar - lastBytesSoFar) / seconds : 0;
 		double bitsPerSecond = getBytesPerSecond * 8;
-		double percent = (double)100 * bytesSoFar / totalBytes;
+		double percent = totalBytes > 0 ? (double)100 * bytesSoFar / totalBytes : 0;
 		return (percent, bitsPerSecond, getBytesPerSecond);
 	}
 }
