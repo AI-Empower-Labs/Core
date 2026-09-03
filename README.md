@@ -1,11 +1,10 @@
 # AEL.Core
 
-Shared .NET libraries for [AI Empower Labs](https://github.com/AI-Empower-Labs) applications. The repo ships two NuGet packages:
+Shared .NET libraries for [AI Empower Labs](https://github.com/AI-Empower-Labs) applications.
 
 | Package | Description |
 |---------|-------------|
 | **AEL.Core** | Host bootstrap, convention-based DI, background services, extensions, and utilities |
-| **AEL.Core.Docling** | Docling API client (Kiota-generated) with helpers for document extraction and chunking |
 
 ## Features
 
@@ -14,18 +13,10 @@ Shared .NET libraries for [AI Empower Labs](https://github.com/AI-Empower-Labs) 
 - **Host runners**: One-line startup for web and console apps with Serilog, OpenTelemetry, and JasperFx
 - **Convention-based DI**: Register services via marker interfaces (`IScopedService`, `ITransientService`, `ISingletonService`)
 - **Background services**: Async hosted services, cron scheduling, and channel-based batch processing
-- **Extensions**: Extension methods for common .NET types (strings, tasks, channels, JSON, etc.)
-- **Disposables**: Composable disposable patterns (`DisposableBag`, `AsyncDisposableBase`, etc.)
-- **Serialization**: JSON converters and enum handling
-- **JsonRepair**: Repair malformed JSON from LLM output
-- **Utilities**: Nanoid generation, continuous hashing, temp files, progress streams
-
-### AEL.Core.Docling
-
-- **Document extraction**: Convert PDFs, Office docs, HTML, images, and more to Markdown via Docling
-- **Chunking**: Hybrid chunker integration for RAG pipelines
-- **PDF preprocessing**: Fixes common PDF link annotations before sending to Docling
-- **Zip support**: Expands zip attachments and processes each entry
+- **Extensions**: Extension methods for common .NET types (strings, tasks, channels, async enumerables, etc.)
+- **Disposables**: Composable disposable patterns (`DisposableBag`, `AsyncDisposableBase`, `AsyncCompletionScope`, etc.)
+- **Serialization**: JSON converters and enum handling with `[EnumMember]` support
+- **Utilities**: Nanoid generation, continuous hashing, temp files, progress streams, file name sanitization
 
 ## Installation
 
@@ -35,7 +26,7 @@ Shared .NET libraries for [AI Empower Labs](https://github.com/AI-Empower-Labs) 
 git submodule add https://github.com/AI-Empower-Labs/Core
 ```
 
-Add a project reference to the package(s) you need.
+Add a project reference to `AEL.Core`.
 
 ### NuGet
 
@@ -43,7 +34,6 @@ Packages are published to GitHub Packages:
 
 ```
 dotnet add package AEL.Core --source https://nuget.pkg.github.com/AI-Empower-Labs/index.json
-dotnet add package AEL.Core.Docling --source https://nuget.pkg.github.com/AI-Empower-Labs/index.json
 ```
 
 ## Quick Start
@@ -68,22 +58,22 @@ using AEL.Core;
 return await ConsoleApplicationRunner.Run(args, Assembly.GetEntryAssembly()!);
 ```
 
-### Docling extraction
+### Convention-based Dependency Injection
+
+Implement lifetime markers to have services discovered and registered automatically across assemblies:
 
 ```csharp
-using AEL.Core.Docling;
-using AEL.Core.Docling.Gamma;
+using AEL.Core.Interfaces;
 
-DoclingClient client = new(requestAdapter);
-BinaryData pdf = BinaryData.FromBytes(bytes, "application/pdf");
+public interface IMyService
+{
+    void DoWork();
+}
 
-var results = await client.ExtractMarkdown(
-    "document.pdf",
-    pdf,
-    TimeSpan.FromMinutes(5),
-    logger,
-    configure: null,
-    cancellationToken);
+public class MyService : IMyService, IScopedService
+{
+    public void DoWork() { }
+}
 ```
 
 ## Project Structure
@@ -91,28 +81,26 @@ var results = await client.ExtractMarkdown(
 ```
 Core/
 ├── AEL.Core/
+│   ├── Disposables/             # Resource management utilities
 │   ├── Extensions/              # Extension methods for common types
 │   ├── Interfaces/              # DI markers, host setup contracts
-│   ├── Disposables/             # Resource management utilities
 │   ├── Registration/            # Automatic DI and host setup
 │   ├── Serialization/           # JSON converters
-│   ├── Json/                    # JsonRepair and JSON utilities
 │   ├── Stream/                  # Progress stream helpers
 │   ├── AsyncBackgroundService.cs
 │   ├── AsyncBatchProcessor.cs   # Channel-based batch processing
 │   ├── CronExecutionAsyncBackgroundService.cs
 │   ├── ConsoleApplicationRunner.cs
 │   ├── ContinuousHash.cs
+│   ├── FileNameHelper.cs
 │   ├── HostBuilder.cs / HostRunner.cs
+│   ├── LoggingRegistration.cs
 │   ├── NanoIdGenerator.cs       # Nanoid class
+│   ├── OpenTelemetryRegistration.cs
 │   ├── Startup.cs
 │   ├── TempFile.cs
+│   ├── TestRunner.cs / HostTestRunner.cs
 │   └── WebApplicationRunner.cs
-├── AEL.Core.Docling/
-│   ├── DoclingClientExtensions.cs  # ExtractMarkdown, ExtractAndChunk
-│   ├── PdfCleaner.cs
-│   ├── DoclingOpenApi.json
-│   └── Gamma/                      # Kiota-generated API client
 └── AEL.Core.Tests/
 ```
 
@@ -128,7 +116,7 @@ Core/
 
 - `HostRunner` / `WebApplicationRunner` / `ConsoleApplicationRunner`: Application entry points
 - `HostBuilder`: Builds hosts with automatic DI registration and host setup
-- `TestRunner`: Starts a host for integration testing (optionally without hosted services)
+- `TestRunner` / `HostTestRunner`: Starts a host for integration testing (optionally without hosted services)
 - Marker interfaces drive lifetime registration; `IDependencyInjectionRegistration*` types add custom registration
 
 ### Utilities
@@ -136,8 +124,9 @@ Core/
 - **Nanoid** (`NanoIdGenerator.cs`): Generate unique, URL-safe identifiers
 - **ContinuousHash**: Incremental hashing
 - **TempFile**: Temporary file creation and management
-- **JsonRepair**: Repair invalid JSON (e.g. LLM output)
-- **OpenTelemetryRegistration** / **LoggingRegistration**: Observability setup
+- **ProgressStream**: Stream wrapper tracking read/write byte progress
+- **FileNameHelper**: Sanitize file names for the local filesystem
+- **OpenTelemetryRegistration** / **LoggingRegistration**: Observability and structured logging setup
 
 ## Requirements
 
