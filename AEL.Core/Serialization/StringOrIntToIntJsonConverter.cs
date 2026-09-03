@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -10,8 +11,9 @@ public sealed class StringOrIntToIntJsonConverter : JsonConverter<int?>
 		return reader.TokenType switch
 		{
 			JsonTokenType.Number when reader.TryGetInt32(out int intValue) => intValue,
-			JsonTokenType.String => int.TryParse(reader.GetString(), out int intValue) ? intValue : null,
-			_ => throw new JsonException($"Unable to convert {reader.TokenType} to string for CustomerCode")
+			JsonTokenType.String => int.TryParse(reader.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int intValue) ? intValue : null,
+			JsonTokenType.Null => null,
+			_ => throw new JsonException($"Unable to convert {reader.TokenType} to integer.")
 		};
 	}
 
