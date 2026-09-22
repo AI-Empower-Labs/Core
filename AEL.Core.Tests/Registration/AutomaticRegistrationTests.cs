@@ -103,6 +103,30 @@ public sealed class AutomaticRegistrationTests
 		Assert.Equal(["first", "second"], OrderedHostSetupOne.ExecutionLog);
 	}
 
+	public interface ICustomDerivedHost : IHost;
+	private sealed class CustomDerivedHost(IHost inner) : ICustomDerivedHost
+	{
+		public IServiceProvider Services => inner.Services;
+		public void Dispose() => inner.Dispose();
+		public Task StartAsync(CancellationToken cancellationToken = default) => inner.StartAsync(cancellationToken);
+		public Task StopAsync(CancellationToken cancellationToken = default) => inner.StopAsync(cancellationToken);
+	}
+
+	[Fact]
+	public async Task AutomaticHostSetup_WithDerivedHostType_InvokesContravariantBaseHostSetup()
+	{
+		HostApplicationBuilder builder = new();
+		using IHost innerHost = builder.Build();
+		CustomDerivedHost derivedHost = new(innerHost);
+		Assembly testAssembly = typeof(AutomaticRegistrationTests).Assembly;
+
+		OrderedHostSetupOne.ExecutionLog.Clear();
+		await derivedHost.AutomaticHostSetup<ICustomDerivedHost>(TestContext.Current.CancellationToken, testAssembly);
+
+		Assert.Contains("first", OrderedHostSetupOne.ExecutionLog);
+		Assert.Contains("second", OrderedHostSetupOne.ExecutionLog);
+	}
+
 	[Fact]
 	public void RegisterType_HostedServiceAsTransient_ThrowsInvalidOperationException()
 	{

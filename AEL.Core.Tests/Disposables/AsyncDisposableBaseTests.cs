@@ -2,54 +2,50 @@ namespace AEL.Core.Tests.Disposables;
 
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 
-public sealed class DisposableBaseTests
+public sealed class AsyncDisposableBaseTests
 {
-    private sealed class DerivedDisposable : DisposableBase
+    private sealed class DerivedAsyncDisposable : AsyncDisposableBase
     {
         public CancellationToken Token => CancellationToken; // expose
-        public DisposableBag Bag => DisposableBag; // expose
+        public AsyncDisposableBag Bag => DisposableBag; // expose
     }
 
     [Fact]
-    public void Dispose_CancelsToken_IfCreated_And_DisposesBag()
+    public async Task DisposeAsync_CancelsToken_IfCreated_And_DisposesBag()
     {
-        DerivedDisposable d = new();
+        DerivedAsyncDisposable d = new();
         bool innerDisposed = false;
-        d.Bag.Add(() => innerDisposed = true);
+        d.Bag.Add(() =>
+        {
+            innerDisposed = true;
+            return Task.CompletedTask;
+        });
 
-        // Access token to force creation
         CancellationToken token = d.Token;
         Assert.False(token.IsCancellationRequested);
 
-        d.Dispose();
+        await d.DisposeAsync();
 
         Assert.True(d.IsDisposed);
         Assert.True(innerDisposed);
         Assert.True(token.IsCancellationRequested);
 
         // Idempotent
-        d.Dispose();
+        await d.DisposeAsync();
         Assert.True(d.IsDisposed);
     }
 
     [Fact]
-    public void Dispose_WithoutTokenAccess_DoesNotThrow()
+    public async Task DisposeAsync_WhenBagThrows_StillCancelsToken()
     {
-        DerivedDisposable d = new();
-        d.Dispose();
-        Assert.True(d.IsDisposed);
-    }
-
-    [Fact]
-    public void Dispose_WhenBagThrows_StillCancelsToken()
-    {
-        DerivedDisposable d = new();
+        DerivedAsyncDisposable d = new();
         d.Bag.Add(() => throw new InvalidOperationException("Cleanup error"));
         CancellationToken token = d.Token;
 
-        Assert.Throws<AggregateException>(() => d.Dispose());
+        await Assert.ThrowsAsync<AggregateException>(async () => await d.DisposeAsync());
         Assert.True(d.IsDisposed);
         Assert.True(token.IsCancellationRequested);
     }

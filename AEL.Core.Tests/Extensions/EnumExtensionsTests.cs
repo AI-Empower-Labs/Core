@@ -52,4 +52,11 @@ public class EnumExtensionsTests
 		Assert.Equal("r", Color.Red.GetEnumName());
 		Assert.Equal("Blue", Color.Blue.GetEnumName());
 	}
+
+	[Fact]
+	public void GetEnumName_UndefinedValue_ReturnsNumericStringWithoutThrowing()
+	{
+		Color undefined = (Color)999;
+		Assert.Equal("999", undefined.GetEnumName());
+	}
 }

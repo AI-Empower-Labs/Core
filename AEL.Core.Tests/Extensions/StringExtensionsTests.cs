@@ -22,6 +22,14 @@ public class StringExtensionsTests
     }
 
     [Fact]
+    public void Sanitize_LineWithOnlyControlCharacters_DoesNotIntroduceBlankLine()
+    {
+        string input = "a\n\u0001\nb";
+        string expected = "a\nb";
+        Assert.Equal(expected, input.Sanitize());
+    }
+
+    [Fact]
     public void Sanitize_PreservesLeadingAndTrailingLetterN()
     {
         Assert.Equal("name", "name".Sanitize());

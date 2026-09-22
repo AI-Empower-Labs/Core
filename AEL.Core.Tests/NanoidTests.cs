@@ -44,6 +44,7 @@ public sealed class NanoidTests
 	public void Generate_InvalidArguments_Throws()
 	{
 		Assert.Throws<ArgumentNullException>(() => Nanoid.Generate(alphabet: null!));
+		Assert.Throws<ArgumentNullException>(() => Nanoid.Generate(random: null!));
 		Assert.Throws<ArgumentOutOfRangeException>(() => Nanoid.Generate(alphabet: ""));
 		Assert.Throws<ArgumentOutOfRangeException>(() => Nanoid.Generate(size: 0));
 		Assert.Throws<ArgumentOutOfRangeException>(() => Nanoid.Generate(size: -5));

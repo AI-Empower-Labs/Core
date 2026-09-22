@@ -218,4 +218,62 @@ public sealed class AsyncBatchProcessorTests
 		await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await t1);
 		await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await t2);
 	}
+
+	[Fact]
+	public async Task Process_After_StopAsync_Throws_Immediately()
+	{
+		ILogger logger = new TestLogger();
+		await using TestAsyncBatchProcessor<int, int> proc = new(
+			batchSize: 2,
+			func: (ins, _) => Task.FromResult(ins.ToArray()),
+			logger: logger,
+			capacity: null,
+			fullMode: BoundedChannelFullMode.Wait);
+
+		await proc.StartAsync(TestContext.Current.CancellationToken);
+		await proc.StopAsync(TestContext.Current.CancellationToken);
+
+		await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+			await proc.Process(1, TestContext.Current.CancellationToken));
+	}
+
+	[Fact]
+	public async Task BoundedChannel_DropWrite_Completes_Dropped_Items_With_Exception()
+	{
+		ILogger logger = new TestLogger();
+		await using TestAsyncBatchProcessor<int, int> proc = new(
+			batchSize: 1,
+			func: (ins, _) => Task.FromResult(ins.ToArray()),
+			logger: logger,
+			capacity: 1,
+			fullMode: BoundedChannelFullMode.DropWrite);
+
+		// Do not start service so nothing is read from channel
+		Task<int> t1 = proc.Process(1, TestContext.Current.CancellationToken);
+		// Second write should be dropped immediately
+		Task<int> t2 = proc.Process(2, TestContext.Current.CancellationToken);
+
+		Exception ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await t2);
+		Assert.Contains("dropped", ex.Message, StringComparison.OrdinalIgnoreCase);
+	}
+
+	[Fact]
+	public async Task BoundedChannel_DropOldest_Completes_Dropped_Items_With_Exception()
+	{
+		ILogger logger = new TestLogger();
+		await using TestAsyncBatchProcessor<int, int> proc = new(
+			batchSize: 1,
+			func: (ins, _) => Task.FromResult(ins.ToArray()),
+			logger: logger,
+			capacity: 1,
+			fullMode: BoundedChannelFullMode.DropOldest);
+
+		// First item fills capacity
+		Task<int> t1 = proc.Process(1, TestContext.Current.CancellationToken);
+		// Second item evicts first item
+		Task<int> t2 = proc.Process(2, TestContext.Current.CancellationToken);
+
+		Exception ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await t1);
+		Assert.Contains("dropped", ex.Message, StringComparison.OrdinalIgnoreCase);
+	}
 }
