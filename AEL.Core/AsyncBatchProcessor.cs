@@ -52,7 +52,8 @@ public abstract class AsyncBatchProcessor<TIn> : AsyncBackgroundService
 					SingleReader = true,
 					SingleWriter = false,
 					FullMode = fullMode
-				});
+				},
+				static item => item.Item2.TrySetException(new InvalidOperationException("Item was dropped from channel.")));
 		}
 		else
 		{
@@ -135,6 +136,12 @@ public abstract class AsyncBatchProcessor<TIn> : AsyncBackgroundService
 		}
 	}
 
+	public override async Task StopAsync(CancellationToken cancellationToken)
+	{
+		_channel.Writer.TryComplete();
+		await base.StopAsync(cancellationToken).ConfigureAwait(false);
+	}
+
 	/// <summary>
 	/// Processes data in batches using the provided function, reading from the input channel
 	/// until completion or cancellation.
@@ -147,59 +154,78 @@ public abstract class AsyncBatchProcessor<TIn> : AsyncBackgroundService
 
 	private async Task ExecuteReadLoop(CancellationToken stoppingToken)
 	{
-		await foreach (ICollection<(TIn Value, TaskCompletionSource TaskCompletionSource)> batch in
-			_channel.ReadAllBatch(_batchSize, stoppingToken))
+		try
 		{
-			// If channel completed with an error, fault all pending items without invoking the func
-			if (_channel.Reader.Completion.IsFaulted)
+			await foreach (ICollection<(TIn Value, TaskCompletionSource TaskCompletionSource)> batch in
+				_channel.ReadAllBatch(_batchSize, stoppingToken))
 			{
-				Exception ex = _channel.Reader.Completion.Exception!;
-				foreach ((_, TaskCompletionSource tcs) in batch)
+				// If channel completed with an error, fault all pending items without invoking the func
+				if (_channel.Reader.Completion.IsFaulted)
 				{
-					tcs.TrySetException(ex);
+					Exception ex = _channel.Reader.Completion.Exception!;
+					foreach ((_, TaskCompletionSource tcs) in batch)
+					{
+						tcs.TrySetException(ex);
+					}
+
+					continue;
 				}
 
-				continue;
-			}
-
-			// Filter out items canceled by callers to avoid wasted work
-			List<(TIn Value, TaskCompletionSource Tcs)> active = [with(capacity: batch.Count)];
-			foreach ((TIn Value, TaskCompletionSource TaskCompletionSource) item in batch)
-			{
-				if (item.TaskCompletionSource.Task is not { IsCanceled: false, IsCompleted: false }) continue;
-				active.Add((item.Value, item.TaskCompletionSource));
-			}
-
-			if (active.Count == 0)
-			{
-				continue;
-			}
-
-			try
-			{
-				TIn[] inputs = [.. active.Select(tuple => tuple.Value)];
-				await ExecuteBatchProcess(inputs, stoppingToken).ConfigureAwait(false);
-
-				for (int i = 0; i < active.Count; i++)
+				// Filter out items canceled by callers to avoid wasted work
+				List<(TIn Value, TaskCompletionSource Tcs)> active = [with(capacity: batch.Count)];
+				foreach ((TIn Value, TaskCompletionSource TaskCompletionSource) item in batch)
 				{
-					active[i].Tcs.TrySetResult();
+					if (item.TaskCompletionSource.Task is not { IsCanceled: false, IsCompleted: false }) continue;
+					active.Add((item.Value, item.TaskCompletionSource));
+				}
+
+				if (active.Count == 0)
+				{
+					continue;
+				}
+
+				try
+				{
+					TIn[] inputs = [.. active.Select(tuple => tuple.Value)];
+					await ExecuteBatchProcess(inputs, stoppingToken).ConfigureAwait(false);
+
+					for (int i = 0; i < active.Count; i++)
+					{
+						active[i].Tcs.TrySetResult();
+					}
+				}
+				catch (OperationCanceledException)
+				{
+					// Cancel remaining not-yet-completed items in the batch with the service stopping token
+					foreach ((_, TaskCompletionSource tcs) in active)
+					{
+						tcs.TrySetCanceled(stoppingToken);
+					}
+				}
+				catch (Exception ex)
+				{
+					_logger.LogError(ex, "Error while processing batch of size {BatchSize}.", active.Count);
+					// Propagate the error to all tasks in the active subset
+					foreach ((_, TaskCompletionSource tcs) in active)
+					{
+						tcs.TrySetException(ex);
+					}
 				}
 			}
-			catch (OperationCanceledException)
+		}
+		finally
+		{
+			while (_channel.Reader.TryRead(out (TIn Value, TaskCompletionSource TaskCompletionSource) item))
 			{
-				// Cancel remaining not-yet-completed items in the batch with the service stopping token
-				foreach ((_, TaskCompletionSource tcs) in active)
+				if (stoppingToken.IsCancellationRequested)
 				{
-					tcs.TrySetCanceled(stoppingToken);
+					item.TaskCompletionSource.TrySetCanceled(stoppingToken);
 				}
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Error while processing batch of size {BatchSize}.", active.Count);
-				// Propagate the error to all tasks in the active subset
-				foreach ((_, TaskCompletionSource tcs) in active)
+				else
 				{
-					tcs.TrySetException(ex);
+					Exception error = (Exception?)_channel.Reader.Completion.Exception
+						?? new InvalidOperationException("Processor is completed.");
+					item.TaskCompletionSource.TrySetException(error);
 				}
 			}
 		}

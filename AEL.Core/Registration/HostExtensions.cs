@@ -23,11 +23,12 @@ public static class HostExtensions
 			if (type.IsBasedOn(typeof(IHostSetup<THost>)))
 			{
 				Log.Logger.Debug("Running host setup {Type}", type.FullName);
-				MethodInfo? methodInfo = type.GetMethod(
-					nameof(IHostSetup<>.Setup),
-					BindingFlags.Public | BindingFlags.Static,
-					[typeof(THost)]);
-				if (methodInfo is null || methodInfo.ReturnType != typeof(void))
+				MethodInfo? methodInfo = type.GetMethods(BindingFlags.Public | BindingFlags.Static)
+					.FirstOrDefault(m => m.Name == nameof(IHostSetup<>.Setup)
+						&& m.ReturnType == typeof(void)
+						&& m.GetParameters().Length == 1
+						&& m.GetParameters()[0].ParameterType.IsAssignableFrom(typeof(THost)));
+				if (methodInfo is null)
 				{
 					throw new InvalidOperationException(
 						$"Type {type.FullName} implements {nameof(IHostSetup<>)}<{typeof(THost).Name}> " +
@@ -37,17 +38,21 @@ public static class HostExtensions
 				methodInfo.Invoke(null, [host]);
 				Log.Logger.Debug("Host setup {Type} completed", type.FullName);
 			}
-			else if (type.IsBasedOn(typeof(IHostSetupAsync<THost>)))
+
+			if (type.IsBasedOn(typeof(IHostSetupAsync<THost>)))
 			{
 				Log.Logger.Debug("Running async host setup {Type}", type.FullName);
-				MethodInfo? methodInfo = type.GetMethod(
-					nameof(IHostSetupAsync<>.Setup),
-					BindingFlags.Public | BindingFlags.Static,
-					[typeof(THost), typeof(CancellationToken)])
-					?? type.GetMethod(
-						nameof(IHostSetupAsync<>.Setup),
-						BindingFlags.Public | BindingFlags.Static,
-						[typeof(THost)]);
+				MethodInfo? methodInfo = type.GetMethods(BindingFlags.Public | BindingFlags.Static)
+					.FirstOrDefault(m => m.Name == nameof(IHostSetupAsync<>.Setup)
+						&& (m.ReturnType == typeof(ValueTask) || m.ReturnType == typeof(Task))
+						&& m.GetParameters().Length == 2
+						&& m.GetParameters()[0].ParameterType.IsAssignableFrom(typeof(THost))
+						&& m.GetParameters()[1].ParameterType == typeof(CancellationToken))
+					?? type.GetMethods(BindingFlags.Public | BindingFlags.Static)
+					.FirstOrDefault(m => m.Name == nameof(IHostSetupAsync<>.Setup)
+						&& (m.ReturnType == typeof(ValueTask) || m.ReturnType == typeof(Task))
+						&& m.GetParameters().Length == 1
+						&& m.GetParameters()[0].ParameterType.IsAssignableFrom(typeof(THost)));
 				if (methodInfo is null)
 				{
 					throw new InvalidOperationException(
