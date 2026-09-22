@@ -44,6 +44,7 @@ public static class StringExtensions
 			// Process each line
 			foreach (string line in lines)
 			{
+				int initialLength = builder.Length;
 				// Filter out control characters (like tabs, carriage returns, etc.) and append valid characters
 				foreach (char c in line.Where(c => !char.IsControl(c)))
 				{
@@ -52,7 +53,7 @@ public static class StringExtensions
 
 				// Only append '\n' if we actually added characters for this line,
 				// and avoid more than one blank line (max two consecutive '\n')
-				if ((builder.Length < 2 || builder[^1] != '\n' || builder[^2] != '\n'))
+				if (builder.Length > initialLength && (builder.Length < 2 || builder[^1] != '\n' || builder[^2] != '\n'))
 				{
 					builder.Append('\n');
 				}

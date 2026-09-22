@@ -46,8 +46,8 @@ public static class EnumExtensions
 	public static string GetEnumName<T>(this T value)
 		where T : struct, Enum
 	{
-		Member<T> member = FastEnum.GetMember(value)!;
-		return member.EnumMemberAttribute?.Value ?? member.Name;
+		Member<T>? member = FastEnum.GetMember(value);
+		return member?.EnumMemberAttribute?.Value ?? member?.Name ?? value.ToString();
 	}
 
 	public static string[] GetEnumNames<T>(T[] allowedValues)

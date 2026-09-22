@@ -40,9 +40,15 @@ public abstract class DisposableBase : IDisposable
 			return;
 		}
 
-		_disposableBag?.Dispose();
-		CancelCancellationTokenSource();
-		PreventObjectFinalization();
+		try
+		{
+			_disposableBag?.Dispose();
+		}
+		finally
+		{
+			CancelCancellationTokenSource();
+			PreventObjectFinalization();
+		}
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]

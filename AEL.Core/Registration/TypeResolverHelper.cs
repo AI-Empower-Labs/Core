@@ -23,6 +23,7 @@ public static class TypeResolverHelper
 		});
 		return collection
 			.Select(descriptor => descriptor.ServiceType)
+			.Distinct()
 			.OrderBy(type =>
 			{
 				ServiceProviderRegistrationOrderAttribute? attribute = type.GetCustomAttribute<ServiceProviderRegistrationOrderAttribute>();

@@ -39,9 +39,15 @@ public abstract class AsyncDisposableBase : IAsyncDisposable
 			return;
 		}
 
-		await DisposeBag();
-		CancelCancellationTokenSource();
-		SuppressFinalize();
+		try
+		{
+			await DisposeBag();
+		}
+		finally
+		{
+			CancelCancellationTokenSource();
+			SuppressFinalize();
+		}
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
