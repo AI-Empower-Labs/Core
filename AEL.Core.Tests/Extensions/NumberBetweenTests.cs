@@ -1,5 +1,3 @@
-using AEL.Core.Extensions;
-
 namespace AEL.Core.Tests.Extensions;
 
 public sealed class NumberBetweenTests

@@ -81,4 +81,37 @@ public sealed class Disposables
 		bag.Add(disposable3);
 		return bag;
 	}
+
+	/// <summary>
+	/// Defers the execution of the specified action until disposal.
+	/// </summary>
+	/// <param name="action">The action to defer.</param>
+	/// <returns>A new <see cref="Defer"/> instance.</returns>
+	public static Defer Defer(Action action) => new(action);
+
+	/// <summary>
+	/// Creates a new <see cref="Defer"/> scope for registering multiple deferred actions.
+	/// </summary>
+	/// <returns>A new <see cref="Defer"/> scope.</returns>
+	public static Defer Defer() => new();
+
+	/// <summary>
+	/// Defers the execution of the specified asynchronous action until asynchronous disposal.
+	/// </summary>
+	/// <param name="func">The asynchronous action to defer.</param>
+	/// <returns>A new <see cref="AsyncDefer"/> instance.</returns>
+	public static AsyncDefer DeferAsync(Func<Task> func) => new(func);
+
+	/// <summary>
+	/// Defers the execution of the specified asynchronous action with cancellation support until asynchronous disposal.
+	/// </summary>
+	/// <param name="func">The asynchronous action to defer.</param>
+	/// <returns>A new <see cref="AsyncDefer"/> instance.</returns>
+	public static AsyncDefer DeferAsync(Func<CancellationToken, Task> func) => new(func);
+
+	/// <summary>
+	/// Creates a new <see cref="AsyncDefer"/> scope for registering multiple deferred actions.
+	/// </summary>
+	/// <returns>A new <see cref="AsyncDefer"/> scope.</returns>
+	public static AsyncDefer DeferAsync() => new();
 }
