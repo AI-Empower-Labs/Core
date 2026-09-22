@@ -56,6 +56,20 @@ public sealed class DeferTests
     }
 
     [Fact]
+    public void Defer_Add_WithState_ExecutesWithoutClosureAllocation()
+    {
+        List<string> list = [];
+        using (Defer defer = new())
+        {
+            defer.Add(list, static state => state.Add("from-add"));
+            defer.Add(static (List<string> state) => state.Add("from-optional"), list);
+            Assert.Empty(list);
+        }
+
+        Assert.Equal(["from-optional", "from-add"], list);
+    }
+
+    [Fact]
     public void Defer_DisposableConstructor_DisposesTarget()
     {
         bool disposed = false;

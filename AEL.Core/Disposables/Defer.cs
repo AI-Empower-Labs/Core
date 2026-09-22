@@ -1,6 +1,5 @@
 // ReSharper disable CheckNamespace
 
-using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 
 namespace System;
@@ -9,21 +8,8 @@ namespace System;
 /// Provides a Go-like defer pattern for executing clean-up actions when exiting a scope.
 /// Registered actions are executed in LIFO (last-in, first-out) order upon disposal.
 /// </summary>
-public sealed class Defer : IDisposable
+public class Defer : DeferBase<Action>, IDisposable, IAsyncDisposable
 {
-	private long _disposeSignaled;
-	private readonly ConcurrentStack<Action> _disposeTasks = new();
-
-	/// <summary>
-	/// Gets a value indicating whether the defer instance has been disposed.
-	/// </summary>
-	public bool IsDisposed => Interlocked.Read(ref _disposeSignaled) != 0;
-
-	/// <summary>
-	/// Gets the number of pending deferred actions.
-	/// </summary>
-	public int Count => _disposeTasks.Count;
-
 	/// <summary>
 	/// Initializes a new, empty instance of the <see cref="Defer"/> class acting as a deferral scope.
 	/// </summary>
@@ -39,7 +25,7 @@ public sealed class Defer : IDisposable
 	public Defer(Action action)
 	{
 		ArgumentNullException.ThrowIfNull(action);
-		_disposeTasks.Push(action);
+		DisposeTasks.Push(action);
 	}
 
 	/// <summary>
@@ -50,7 +36,7 @@ public sealed class Defer : IDisposable
 	public Defer(IDisposable disposable)
 	{
 		ArgumentNullException.ThrowIfNull(disposable);
-		_disposeTasks.Push(disposable.Dispose);
+		DisposeTasks.Push(disposable.Dispose);
 	}
 
 	/// <summary>
@@ -61,8 +47,30 @@ public sealed class Defer : IDisposable
 	public void Add(Action action)
 	{
 		ArgumentNullException.ThrowIfNull(action);
-		_disposeTasks.Push(action);
+		DisposeTasks.Push(action);
 	}
+
+	/// <summary>
+	/// Adds a parameterized action with state to be executed when this scope is disposed.
+	/// </summary>
+	/// <typeparam name="T">The type of the state object.</typeparam>
+	/// <param name="action">The action to defer.</param>
+	/// <param name="state">The optional state passed to the action.</param>
+	/// <exception cref="ArgumentNullException">Thrown when <paramref name="action"/> is null.</exception>
+	public void Add<T>(Action<T> action, T state = default!)
+	{
+		ArgumentNullException.ThrowIfNull(action);
+		DisposeTasks.Push(() => action(state));
+	}
+
+	/// <summary>
+	/// Adds a parameterized action with state to be executed when this scope is disposed.
+	/// </summary>
+	/// <typeparam name="T">The type of the state object.</typeparam>
+	/// <param name="state">The state passed to the action.</param>
+	/// <param name="action">The action to defer.</param>
+	/// <exception cref="ArgumentNullException">Thrown when <paramref name="action"/> is null.</exception>
+	public void Add<T>(T state, Action<T> action) => Add(action, state);
 
 	/// <summary>
 	/// Adds a disposable object whose disposal will be executed when this scope is disposed.
@@ -72,22 +80,9 @@ public sealed class Defer : IDisposable
 	public void Add(IDisposable disposable)
 	{
 		ArgumentNullException.ThrowIfNull(disposable);
-		_disposeTasks.Push(disposable.Dispose);
+		DisposeTasks.Push(disposable.Dispose);
 	}
 
-
-	/// <summary>
-	/// Clears all pending deferred actions without executing them.
-	/// </summary>
-	public void Clear()
-	{
-		_disposeTasks.Clear();
-	}
-
-	/// <summary>
-	/// Dismisses all pending deferred actions without executing them. Alias for <see cref="Clear"/>.
-	/// </summary>
-	public void Dismiss() => Clear();
 
 	/// <summary>
 	/// Executes all deferred actions in reverse order of addition (LIFO).
@@ -104,17 +99,21 @@ public sealed class Defer : IDisposable
 		GC.SuppressFinalize(this);
 	}
 
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private bool SignalDispose()
+	/// <summary>
+	/// Asynchronously executes all deferred actions.
+	/// </summary>
+	/// <returns>A completed task representing the asynchronous disposal.</returns>
+	public ValueTask DisposeAsync()
 	{
-		return Interlocked.CompareExchange(ref _disposeSignaled, 1, 0) != 1;
+		Dispose();
+		return ValueTask.CompletedTask;
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private void HandleDisposeTasks()
 	{
 		List<Exception>? exceptions = null;
-		while (_disposeTasks.TryPop(out Action? disposable))
+		while (DisposeTasks.TryPop(out Action? disposable))
 		{
 			try
 			{
@@ -164,12 +163,30 @@ public sealed class Defer : IDisposable
 	public static Defer Run(Action action) => new(action);
 
 	/// <summary>
+	/// Creates a deferred clean-up action with state to avoid closure allocations.
+	/// </summary>
+	/// <typeparam name="T">The type of the state object.</typeparam>
+	/// <param name="state">The state passed to the action.</param>
+	/// <param name="action">The action to defer.</param>
+	/// <returns>A disposable <see cref="Defer"/> instance.</returns>
+	public static Defer Run<T>(T state, Action<T> action) => Action(state, action);
+
+	/// <summary>
 	/// Creates a deferred clean-up action that will execute when the returned <see cref="Defer"/> is disposed.
 	/// Alias for <see cref="Action(Action)"/>.
 	/// </summary>
 	/// <param name="action">The action to defer.</param>
 	/// <returns>A disposable <see cref="Defer"/> instance.</returns>
 	public static Defer Create(Action action) => new(action);
+
+	/// <summary>
+	/// Creates a deferred clean-up action with state to avoid closure allocations.
+	/// </summary>
+	/// <typeparam name="T">The type of the state object.</typeparam>
+	/// <param name="state">The state passed to the action.</param>
+	/// <param name="action">The action to defer.</param>
+	/// <returns>A disposable <see cref="Defer"/> instance.</returns>
+	public static Defer Create<T>(T state, Action<T> action) => Action(state, action);
 
 	/// <summary>
 	/// Defers the disposal of the specified disposable object until the returned <see cref="Defer"/> is disposed.
@@ -207,15 +224,15 @@ public sealed class Defer : IDisposable
 	/// Creates a deferred asynchronous clean-up action.
 	/// </summary>
 	/// <param name="action">The asynchronous action to defer.</param>
-	/// <returns>An asynchronous disposable <see cref="AsyncDefer"/> instance.</returns>
-	public static AsyncDefer Async(Func<Task> action) => new(action);
+	/// <returns>An asynchronous disposable <see cref="DeferAsync"/> instance.</returns>
+	public static DeferAsync Async(Func<Task> action) => new(action);
 
 	/// <summary>
 	/// Creates a deferred asynchronous clean-up action with cancellation support.
 	/// </summary>
 	/// <param name="action">The asynchronous action to defer.</param>
-	/// <returns>An asynchronous disposable <see cref="AsyncDefer"/> instance.</returns>
-	public static AsyncDefer Async(Func<CancellationToken, Task> action) => new(action);
+	/// <returns>An asynchronous disposable <see cref="DeferAsync"/> instance.</returns>
+	public static DeferAsync Async(Func<CancellationToken, Task> action) => new(action);
 
 	/// <summary>
 	/// Creates a deferred asynchronous clean-up action with state.
@@ -223,35 +240,97 @@ public sealed class Defer : IDisposable
 	/// <typeparam name="T">The type of the state object.</typeparam>
 	/// <param name="state">The state passed to the action.</param>
 	/// <param name="action">The asynchronous action to defer.</param>
-	/// <returns>An asynchronous disposable <see cref="AsyncDefer"/> instance.</returns>
-	public static AsyncDefer Async<T>(T state, Func<T, CancellationToken, Task> action) => AsyncDefer.Action(state, action);
+	/// <returns>An asynchronous disposable <see cref="DeferAsync"/> instance.</returns>
+	public static DeferAsync Async<T>(T state, Func<T, CancellationToken, Task> action)
+	{
+		ArgumentNullException.ThrowIfNull(action);
+		return new DeferAsync(ct => action(state, ct));
+	}
+
+	/// <summary>
+	/// Creates a deferred asynchronous clean-up action with optional state.
+	/// </summary>
+	/// <typeparam name="T">The type of the state object.</typeparam>
+	/// <param name="action">The asynchronous action to defer.</param>
+	/// <param name="state">The optional state passed to the action.</param>
+	/// <returns>An asynchronous disposable <see cref="DeferAsync"/> instance.</returns>
+	public static DeferAsync Async<T>(Func<T, CancellationToken, Task> action, T state = default!) => Async(state, action);
+
+	/// <summary>
+	/// Creates a deferred asynchronous clean-up action with state.
+	/// </summary>
+	/// <typeparam name="T">The type of the state object.</typeparam>
+	/// <param name="state">The state passed to the action.</param>
+	/// <param name="action">The asynchronous action to defer.</param>
+	/// <returns>An asynchronous disposable <see cref="DeferAsync"/> instance.</returns>
+	public static DeferAsync Async<T>(T state, Func<T, Task> action)
+	{
+		ArgumentNullException.ThrowIfNull(action);
+		return new DeferAsync(async () => await action(state));
+	}
+
+	/// <summary>
+	/// Creates a deferred asynchronous clean-up action with optional state.
+	/// </summary>
+	/// <typeparam name="T">The type of the state object.</typeparam>
+	/// <param name="action">The asynchronous action to defer.</param>
+	/// <param name="state">The optional state passed to the action.</param>
+	/// <returns>An asynchronous disposable <see cref="DeferAsync"/> instance.</returns>
+	public static DeferAsync Async<T>(Func<T, Task> action, T state = default!) => Async(state, action);
+
+	/// <summary>
+	/// Creates a deferred synchronous clean-up action with state in an asynchronous context.
+	/// </summary>
+	/// <typeparam name="T">The type of the state object.</typeparam>
+	/// <param name="state">The state passed to the action.</param>
+	/// <param name="action">The action to defer.</param>
+	/// <returns>An asynchronous disposable <see cref="DeferAsync"/> instance.</returns>
+	public static DeferAsync Async<T>(T state, Action<T> action)
+	{
+		ArgumentNullException.ThrowIfNull(action);
+		return new DeferAsync(() => action(state));
+	}
+
+	/// <summary>
+	/// Creates a deferred synchronous clean-up action with optional state in an asynchronous context.
+	/// </summary>
+	/// <typeparam name="T">The type of the state object.</typeparam>
+	/// <param name="action">The action to defer.</param>
+	/// <param name="state">The optional state passed to the action.</param>
+	/// <returns>An asynchronous disposable <see cref="DeferAsync"/> instance.</returns>
+	public static DeferAsync Async<T>(Action<T> action, T state = default!) => Async(state, action);
 
 	/// <summary>
 	/// Defers the asynchronous disposal of the specified resource.
 	/// </summary>
 	/// <param name="disposable">The asynchronous disposable to defer.</param>
-	/// <returns>An asynchronous disposable <see cref="AsyncDefer"/> instance.</returns>
-	public static AsyncDefer Async(IAsyncDisposable disposable) => new(disposable);
+	/// <returns>An asynchronous disposable <see cref="DeferAsync"/> instance.</returns>
+	public static DeferAsync Async(IAsyncDisposable disposable) => new(disposable);
 
 	/// <summary>
 	/// Defers the disposal of the specified synchronous disposable in an asynchronous context.
 	/// </summary>
 	/// <param name="disposable">The synchronous disposable to defer.</param>
-	/// <returns>An asynchronous disposable <see cref="AsyncDefer"/> instance.</returns>
-	public static AsyncDefer Async(IDisposable disposable) => new(disposable);
+	/// <returns>An asynchronous disposable <see cref="DeferAsync"/> instance.</returns>
+	public static DeferAsync Async(IDisposable disposable) => new(disposable);
 
 	/// <summary>
 	/// Creates a new asynchronous deferral scope.
 	/// </summary>
-	/// <returns>A new <see cref="AsyncDefer"/> scope.</returns>
-	public static AsyncDefer AsyncScope() => new();
+	/// <returns>A new <see cref="DeferAsync"/> scope.</returns>
+	public static DeferAsync AsyncScope() => new();
 
 	/// <summary>
 	/// Creates a new asynchronous deferral scope and outputs a delegate to register asynchronous deferred actions.
 	/// </summary>
 	/// <param name="defer">A delegate to register asynchronous actions in this scope.</param>
-	/// <returns>A new <see cref="AsyncDefer"/> scope.</returns>
-	public static AsyncDefer AsyncScope(out Action<Func<Task>> defer) => AsyncDefer.Scope(out defer);
+	/// <returns>A new <see cref="DeferAsync"/> scope.</returns>
+	public static DeferAsync AsyncScope(out Action<Func<Task>> defer)
+	{
+		DeferAsync instance = new();
+		defer = instance.Add;
+		return instance;
+	}
 
 	#endregion
 }

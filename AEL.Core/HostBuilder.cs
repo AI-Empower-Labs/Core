@@ -32,20 +32,9 @@ public static class HostBuilder
 
 		Log.Logger.Debug("Building host {HostType}", typeof(THost).Name);
 		THost application = build(builder);
-		try
+		await using AsyncDefer rollback = Disposables.DeferAsync(application, static async (app, _) =>
 		{
-			Log.Logger.Debug("Running automatic host setup for {HostType}", typeof(THost).Name);
-			await application.AutomaticHostSetup<THost>(cancellationToken, assemblies);
-			Log.Logger.Debug("Automatic host setup completed for {HostType}", typeof(THost).Name);
-			Log.Logger.Debug("Running host configuration for {HostType}", typeof(THost).Name);
-			configureHost?.Invoke(application);
-
-			Log.Logger.Debug("Host {HostType} built", typeof(THost).Name);
-			return application;
-		}
-		catch
-		{
-			if (application is IAsyncDisposable asyncDisposable)
+			if (app is IAsyncDisposable asyncDisposable)
 			{
 				try
 				{
@@ -60,15 +49,23 @@ public static class HostBuilder
 			{
 				try
 				{
-					application.Dispose();
+					app.Dispose();
 				}
 				catch (Exception ex)
 				{
 					Log.Logger.Warning(ex, "Failed to dispose host after build failure");
 				}
 			}
+		});
 
-			throw;
-		}
+		Log.Logger.Debug("Running automatic host setup for {HostType}", typeof(THost).Name);
+		await application.AutomaticHostSetup<THost>(cancellationToken, assemblies);
+		Log.Logger.Debug("Automatic host setup completed for {HostType}", typeof(THost).Name);
+		Log.Logger.Debug("Running host configuration for {HostType}", typeof(THost).Name);
+		configureHost?.Invoke(application);
+
+		Log.Logger.Debug("Host {HostType} built", typeof(THost).Name);
+		rollback.Dismiss();
+		return application;
 	}
 }

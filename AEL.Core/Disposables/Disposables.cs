@@ -39,15 +39,13 @@ public sealed class Disposables
 	public static IAsyncDisposable CreateAsync<T>(T state, Func<T, CancellationToken, Task> func)
 	{
 		ArgumentNullException.ThrowIfNull(func);
-		AsyncDisposableBag result = new();
-		result.Add(cancellationToken => func(state, cancellationToken));
-		return result;
+		return AsyncDefer.Action(state, func);
 	}
 
 	public static IAsyncDisposable CreateAsync(Func<CancellationToken, Task> func)
 	{
 		ArgumentNullException.ThrowIfNull(func);
-		return CreateAsync<object?>(null, (_, token) => func(token));
+		return DeferAsync(func);
 	}
 
 	/// <summary>
@@ -60,7 +58,7 @@ public sealed class Disposables
 	/// </returns>
 	public static IDisposable Combine(IDisposable disposable1, IDisposable disposable2)
 	{
-		DisposableBag bag = new();
+		Defer bag = Defer();
 		bag.Add(disposable1);
 		bag.Add(disposable2);
 		return bag;
@@ -75,7 +73,7 @@ public sealed class Disposables
 	/// <returns>A single <see cref="IDisposable"/> object that combines the specified <see cref="IDisposable"/> objects.</returns>
 	public static IDisposable Combine(IDisposable disposable1, IDisposable disposable2, IDisposable disposable3)
 	{
-		DisposableBag bag = new();
+		Defer bag = Defer();
 		bag.Add(disposable1);
 		bag.Add(disposable2);
 		bag.Add(disposable3);
@@ -90,6 +88,24 @@ public sealed class Disposables
 	public static Defer Defer(Action action) => new(action);
 
 	/// <summary>
+	/// Defers the execution of the specified parameterized action until disposal.
+	/// </summary>
+	/// <typeparam name="T">The type of the state object.</typeparam>
+	/// <param name="state">The state passed to the action.</param>
+	/// <param name="action">The action to defer.</param>
+	/// <returns>A new <see cref="Defer"/> instance.</returns>
+	public static Defer Defer<T>(T state, Action<T> action) => System.Defer.Action(state, action);
+
+	/// <summary>
+	/// Defers the execution of the specified parameterized action with optional state until disposal.
+	/// </summary>
+	/// <typeparam name="T">The type of the state object.</typeparam>
+	/// <param name="action">The action to defer.</param>
+	/// <param name="state">The optional state passed to the action.</param>
+	/// <returns>A new <see cref="Defer"/> instance.</returns>
+	public static Defer Defer<T>(Action<T> action, T state = default!) => System.Defer.Action(state, action);
+
+	/// <summary>
 	/// Creates a new <see cref="Defer"/> scope for registering multiple deferred actions.
 	/// </summary>
 	/// <returns>A new <see cref="Defer"/> scope.</returns>
@@ -99,19 +115,80 @@ public sealed class Disposables
 	/// Defers the execution of the specified asynchronous action until asynchronous disposal.
 	/// </summary>
 	/// <param name="func">The asynchronous action to defer.</param>
-	/// <returns>A new <see cref="AsyncDefer"/> instance.</returns>
-	public static AsyncDefer DeferAsync(Func<Task> func) => new(func);
+	/// <returns>A new <see cref="DeferAsync"/> instance.</returns>
+	public static DeferAsync DeferAsync(Func<Task> func) => new(func);
 
 	/// <summary>
 	/// Defers the execution of the specified asynchronous action with cancellation support until asynchronous disposal.
 	/// </summary>
 	/// <param name="func">The asynchronous action to defer.</param>
-	/// <returns>A new <see cref="AsyncDefer"/> instance.</returns>
-	public static AsyncDefer DeferAsync(Func<CancellationToken, Task> func) => new(func);
+	/// <returns>A new <see cref="DeferAsync"/> instance.</returns>
+	public static DeferAsync DeferAsync(Func<CancellationToken, Task> func) => new(func);
 
 	/// <summary>
-	/// Creates a new <see cref="AsyncDefer"/> scope for registering multiple deferred actions.
+	/// Defers the execution of the specified parameterized asynchronous action until asynchronous disposal.
 	/// </summary>
-	/// <returns>A new <see cref="AsyncDefer"/> scope.</returns>
-	public static AsyncDefer DeferAsync() => new();
+	/// <typeparam name="T">The type of the state object.</typeparam>
+	/// <param name="state">The state passed to the action.</param>
+	/// <param name="func">The asynchronous action to defer.</param>
+	/// <returns>A new <see cref="DeferAsync"/> instance.</returns>
+	public static DeferAsync DeferAsync<T>(T state, Func<T, Task> func) => System.Defer.Async(state, func);
+
+	/// <summary>
+	/// Defers the execution of the specified parameterized asynchronous action with optional state until asynchronous disposal.
+	/// </summary>
+	/// <typeparam name="T">The type of the state object.</typeparam>
+	/// <param name="func">The asynchronous action to defer.</param>
+	/// <param name="state">The optional state passed to the action.</param>
+	/// <returns>A new <see cref="DeferAsync"/> instance.</returns>
+	public static DeferAsync DeferAsync<T>(Func<T, Task> func, T state = default!) => System.Defer.Async(state, func);
+
+	/// <summary>
+	/// Defers the execution of the specified parameterized asynchronous action with cancellation support until asynchronous disposal.
+	/// </summary>
+	/// <typeparam name="T">The type of the state object.</typeparam>
+	/// <param name="state">The state passed to the action.</param>
+	/// <param name="func">The asynchronous action to defer.</param>
+	/// <returns>A new <see cref="DeferAsync"/> instance.</returns>
+	public static DeferAsync DeferAsync<T>(T state, Func<T, CancellationToken, Task> func) => System.Defer.Async(state, func);
+
+	/// <summary>
+	/// Defers the execution of the specified parameterized asynchronous action with cancellation support and optional state until asynchronous disposal.
+	/// </summary>
+	/// <typeparam name="T">The type of the state object.</typeparam>
+	/// <param name="func">The asynchronous action to defer.</param>
+	/// <param name="state">The optional state passed to the action.</param>
+	/// <returns>A new <see cref="DeferAsync"/> instance.</returns>
+	public static DeferAsync DeferAsync<T>(Func<T, CancellationToken, Task> func, T state = default!) => System.Defer.Async(state, func);
+
+	/// <summary>
+	/// Defers the execution of the specified synchronous action until asynchronous disposal.
+	/// </summary>
+	/// <param name="action">The action to defer.</param>
+	/// <returns>A new <see cref="DeferAsync"/> instance.</returns>
+	public static DeferAsync DeferAsync(Action action) => new(action);
+
+	/// <summary>
+	/// Defers the execution of the specified parameterized action with state until asynchronous disposal.
+	/// </summary>
+	/// <typeparam name="T">The type of the state object.</typeparam>
+	/// <param name="state">The state passed to the action.</param>
+	/// <param name="action">The action to defer.</param>
+	/// <returns>A new <see cref="DeferAsync"/> instance.</returns>
+	public static DeferAsync DeferAsync<T>(T state, Action<T> action) => System.Defer.Async(state, action);
+
+	/// <summary>
+	/// Defers the execution of the specified parameterized action with optional state until asynchronous disposal.
+	/// </summary>
+	/// <typeparam name="T">The type of the state object.</typeparam>
+	/// <param name="action">The action to defer.</param>
+	/// <param name="state">The optional state passed to the action.</param>
+	/// <returns>A new <see cref="DeferAsync"/> instance.</returns>
+	public static DeferAsync DeferAsync<T>(Action<T> action, T state = default!) => System.Defer.Async(state, action);
+
+	/// <summary>
+	/// Creates a new <see cref="DeferAsync"/> scope for registering multiple deferred actions.
+	/// </summary>
+	/// <returns>A new <see cref="DeferAsync"/> scope.</returns>
+	public static DeferAsync DeferAsync() => new();
 }

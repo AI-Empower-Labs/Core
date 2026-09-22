@@ -31,61 +31,57 @@ public static class TestRunner
 		where THost : IHost
 		where THostApplicationBuilder : IHostApplicationBuilder
 	{
+		await using AsyncDefer rollback = Disposables.DeferAsync();
 		Startup startup = new();
-		THost? host = default;
-		try
-		{
-			host = await HostBuilder.Build(args, create,
-				builder =>
-				{
-					configureBuilder?.Invoke(builder);
-					if (startHostedServices) return;
-					// Remove IHostedService service descriptors
-					foreach (ServiceDescriptor serviceDescriptor in builder.Services.ToArray())
-					{
-						if (serviceDescriptor.ServiceType == typeof(IHostedService))
-						{
-							builder.Services.Remove(serviceDescriptor);
-						}
-					}
-				},
-				build, configureHost, cancellationToken, assemblies);
-			await host.StartAsync(cancellationToken);
-			TestRunner<THost> testRunner = new(host);
-			testRunner.DisposableBag.Add(startup);
-			testRunner.DisposableBag.Add(async token => await host.StopAsync(token));
-			return testRunner;
-		}
-		catch
-		{
-			if (host is not null)
+		rollback.Add(startup);
+
+		THost host = await HostBuilder.Build(args, create,
+			builder =>
 			{
-				if (host is IAsyncDisposable asyncDisposable)
+				configureBuilder?.Invoke(builder);
+				if (startHostedServices) return;
+				// Remove IHostedService service descriptors
+				foreach (ServiceDescriptor serviceDescriptor in builder.Services.ToArray())
 				{
-					try
+					if (serviceDescriptor.ServiceType == typeof(IHostedService))
 					{
-						await asyncDisposable.DisposeAsync();
-					}
-					catch
-					{
-						// Ignore disposal failure
+						builder.Services.Remove(serviceDescriptor);
 					}
 				}
-				else
+			},
+			build, configureHost, cancellationToken, assemblies);
+
+		rollback.Add(host, static async (h, _) =>
+		{
+			if (h is IAsyncDisposable asyncDisposable)
+			{
+				try
 				{
-					try
-					{
-						host.Dispose();
-					}
-					catch
-					{
-						// Ignore disposal failure
-					}
+					await asyncDisposable.DisposeAsync();
+				}
+				catch
+				{
+					// Ignore disposal failure
 				}
 			}
+			else
+			{
+				try
+				{
+					h.Dispose();
+				}
+				catch
+				{
+					// Ignore disposal failure
+				}
+			}
+		});
 
-			startup.Dispose();
-			throw;
-		}
+		await host.StartAsync(cancellationToken);
+		TestRunner<THost> testRunner = new(host);
+		testRunner.DisposableBag.Add(startup);
+		testRunner.DisposableBag.Add(host, static async (h, token) => await h.StopAsync(token));
+		rollback.Dismiss();
+		return testRunner;
 	}
 }

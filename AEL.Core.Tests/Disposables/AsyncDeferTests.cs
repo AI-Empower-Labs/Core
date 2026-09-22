@@ -73,6 +73,41 @@ public sealed class AsyncDeferTests
     }
 
     [Fact]
+    public async Task AsyncDefer_Add_WithState_ExecutesOnDisposeAsync()
+    {
+        List<string> list = [];
+        await using (AsyncDefer defer = new())
+        {
+            defer.Add(list, static async (state, _) =>
+            {
+                await Task.Yield();
+                state.Add("task-ct");
+            });
+            defer.Add(list, static async state =>
+            {
+                await Task.Yield();
+                state.Add("task");
+            });
+            defer.Add(list, static state => state.Add("sync"));
+            defer.Add(static (List<string> state, CancellationToken _) =>
+            {
+                state.Add("optional-task-ct");
+                return Task.CompletedTask;
+            }, list);
+            defer.Add(static (List<string> state) =>
+            {
+                state.Add("optional-task");
+                return Task.CompletedTask;
+            }, list);
+            defer.Add(static (List<string> state) => state.Add("optional-sync"), list);
+
+            Assert.Empty(list);
+        }
+
+        Assert.Equal(["optional-sync", "optional-task", "optional-task-ct", "sync", "task", "task-ct"], list);
+    }
+
+    [Fact]
     public async Task AsyncDefer_MultipleActions_ExecutesInLifoOrder()
     {
         List<int> order = [];

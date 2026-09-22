@@ -33,24 +33,16 @@ public static class AsyncEnumerableExtensions
 			using CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 			Task producerTask = Producer(linkedCts.Token);
 
-			try
+			await using (Disposables.DeferAsync((linkedCts, channel, producerTask), static async (state, token) =>
+				{
+					await state.linkedCts.CancelAsync();
+					state.channel.Writer.TryComplete();
+					await state.producerTask.WithSilentCancellation(cancellationToken: token);
+				}))
 			{
 				await foreach (ICollection<T> collection in channel.ReadAllBatch(batchSize, linkedCts.Token))
 				{
 					yield return collection;
-				}
-			}
-			finally
-			{
-				await linkedCts.CancelAsync();
-				channel.Writer.TryComplete();
-				try
-				{
-					await producerTask;
-				}
-				catch (OperationCanceledException)
-				{
-					// Ignore cancellation during teardown
 				}
 			}
 
@@ -88,24 +80,16 @@ public static class AsyncEnumerableExtensions
 			using CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 			Task producerTask = Producer(linkedCts.Token);
 
-			try
+			await using (Disposables.DeferAsync((linkedCts, channel, producerTask), static async (state, token) =>
+				{
+					await state.linkedCts.CancelAsync();
+					state.channel.Writer.TryComplete();
+					await state.producerTask.WithSilentCancellation(cancellationToken: token);
+				}))
 			{
 				await foreach (ICollection<T> collection in channel.ReadAllBatchDrain(batchSize, linkedCts.Token))
 				{
 					yield return collection;
-				}
-			}
-			finally
-			{
-				await linkedCts.CancelAsync();
-				channel.Writer.TryComplete();
-				try
-				{
-					await producerTask;
-				}
-				catch (OperationCanceledException)
-				{
-					// Ignore cancellation during teardown
 				}
 			}
 
@@ -146,7 +130,15 @@ public static class AsyncEnumerableExtensions
 			using SemaphoreSlim semaphore = new(maxDegreeOfParallelism);
 			using CancellationTokenSource tokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-			try
+			await using (Disposables.DeferAsync((tokenSource, queue), static async (state, token) =>
+				{
+					await state.tokenSource.CancelAsync();
+					while (state.queue.Count > 0)
+					{
+						Task<TResult> task = state.queue.Dequeue();
+						await task.WithSilentException(cancellationToken: token);
+					}
+				}))
 			{
 				await foreach (T item in enumerable.WithCancellation(tokenSource.Token))
 				{
@@ -165,42 +157,24 @@ public static class AsyncEnumerableExtensions
 					yield return await DequeueHandled(queue, tokenSource);
 				}
 			}
-			finally
-			{
-				await tokenSource.CancelAsync();
-				while (queue.Count > 0)
-				{
-					Task<TResult> task = queue.Dequeue();
-					try
-					{
-						await task;
-					}
-					catch
-					{
-						// Ignore exceptions from canceled/in-flight tasks during teardown
-					}
-				}
-			}
 
 			yield break;
 
 			async Task<TResult> RunSelector(T item, CancellationToken token, SemaphoreSlim concurrencyLimiter)
 			{
-				try
-				{
-					return await selector(item, token);
-				}
-				finally
+				await using Defer _ = Disposables.Defer(concurrencyLimiter, static limiter =>
 				{
 					try
 					{
-						concurrencyLimiter.Release();
+						limiter.Release();
 					}
 					catch (ObjectDisposedException)
 					{
 						// Ignore in case of teardown
 					}
-				}
+				});
+
+				return await selector(item, token);
 			}
 
 			static async Task<TResult> DequeueHandled(Queue<Task<TResult>> q, CancellationTokenSource cts)

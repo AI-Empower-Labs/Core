@@ -1,6 +1,5 @@
 // ReSharper disable CheckNamespace
 
-using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 
 namespace System;
@@ -9,21 +8,8 @@ namespace System;
 /// Provides an asynchronous Go-like defer pattern for executing clean-up actions when exiting an async scope.
 /// Registered actions are executed in LIFO (last-in, first-out) order upon asynchronous disposal.
 /// </summary>
-public sealed class AsyncDefer : IAsyncDisposable
+public class AsyncDefer : DeferBase<Func<CancellationToken, Task>>, IAsyncDisposable
 {
-	private long _disposeSignaled;
-	private readonly ConcurrentStack<Func<CancellationToken, Task>> _disposeTasks = new();
-
-	/// <summary>
-	/// Gets a value indicating whether the defer instance has been disposed.
-	/// </summary>
-	public bool IsDisposed => Interlocked.Read(ref _disposeSignaled) != 0;
-
-	/// <summary>
-	/// Gets the number of pending deferred actions.
-	/// </summary>
-	public int Count => _disposeTasks.Count;
-
 	/// <summary>
 	/// Initializes a new, empty instance of the <see cref="AsyncDefer"/> class acting as an async deferral scope.
 	/// </summary>
@@ -39,7 +25,7 @@ public sealed class AsyncDefer : IAsyncDisposable
 	public AsyncDefer(Func<Task> asyncAction)
 	{
 		ArgumentNullException.ThrowIfNull(asyncAction);
-		_disposeTasks.Push(_ => asyncAction());
+		DisposeTasks.Push(_ => asyncAction());
 	}
 
 	/// <summary>
@@ -50,7 +36,7 @@ public sealed class AsyncDefer : IAsyncDisposable
 	public AsyncDefer(Func<CancellationToken, Task> asyncAction)
 	{
 		ArgumentNullException.ThrowIfNull(asyncAction);
-		_disposeTasks.Push(asyncAction);
+		DisposeTasks.Push(asyncAction);
 	}
 
 	/// <summary>
@@ -61,7 +47,7 @@ public sealed class AsyncDefer : IAsyncDisposable
 	public AsyncDefer(Action action)
 	{
 		ArgumentNullException.ThrowIfNull(action);
-		_disposeTasks.Push(_ =>
+		DisposeTasks.Push(_ =>
 		{
 			action();
 			return Task.CompletedTask;
@@ -76,7 +62,7 @@ public sealed class AsyncDefer : IAsyncDisposable
 	public AsyncDefer(IAsyncDisposable disposable)
 	{
 		ArgumentNullException.ThrowIfNull(disposable);
-		_disposeTasks.Push(_ => disposable.DisposeAsync().AsTask());
+		DisposeTasks.Push(_ => disposable.DisposeAsync().AsTask());
 	}
 
 	/// <summary>
@@ -87,7 +73,7 @@ public sealed class AsyncDefer : IAsyncDisposable
 	public AsyncDefer(IDisposable disposable)
 	{
 		ArgumentNullException.ThrowIfNull(disposable);
-		_disposeTasks.Push(_ =>
+		DisposeTasks.Push(_ =>
 		{
 			disposable.Dispose();
 			return Task.CompletedTask;
@@ -102,7 +88,7 @@ public sealed class AsyncDefer : IAsyncDisposable
 	public void Add(Func<Task> asyncAction)
 	{
 		ArgumentNullException.ThrowIfNull(asyncAction);
-		_disposeTasks.Push(_ => asyncAction());
+		DisposeTasks.Push(_ => asyncAction());
 	}
 
 	/// <summary>
@@ -113,7 +99,7 @@ public sealed class AsyncDefer : IAsyncDisposable
 	public void Add(Func<CancellationToken, Task> asyncAction)
 	{
 		ArgumentNullException.ThrowIfNull(asyncAction);
-		_disposeTasks.Push(asyncAction);
+		DisposeTasks.Push(asyncAction);
 	}
 
 	/// <summary>
@@ -124,7 +110,7 @@ public sealed class AsyncDefer : IAsyncDisposable
 	public void Add(Action action)
 	{
 		ArgumentNullException.ThrowIfNull(action);
-		_disposeTasks.Push(_ =>
+		DisposeTasks.Push(_ =>
 		{
 			action();
 			return Task.CompletedTask;
@@ -139,7 +125,7 @@ public sealed class AsyncDefer : IAsyncDisposable
 	public void Add(IAsyncDisposable disposable)
 	{
 		ArgumentNullException.ThrowIfNull(disposable);
-		_disposeTasks.Push(_ => disposable.DisposeAsync().AsTask());
+		DisposeTasks.Push(_ => disposable.DisposeAsync().AsTask());
 	}
 
 	/// <summary>
@@ -150,26 +136,83 @@ public sealed class AsyncDefer : IAsyncDisposable
 	public void Add(IDisposable disposable)
 	{
 		ArgumentNullException.ThrowIfNull(disposable);
-		_disposeTasks.Push(_ =>
+		DisposeTasks.Push(_ =>
 		{
 			disposable.Dispose();
 			return Task.CompletedTask;
 		});
 	}
 
-
 	/// <summary>
-	/// Clears all pending deferred actions without executing them.
+	/// Adds an asynchronous action with optional state to be executed when this scope is asynchronously disposed.
 	/// </summary>
-	public void Clear()
+	/// <typeparam name="T">The type of the state object.</typeparam>
+	/// <param name="asyncAction">The asynchronous action to defer.</param>
+	/// <param name="state">The optional state passed to the action.</param>
+	/// <exception cref="ArgumentNullException">Thrown when <paramref name="asyncAction"/> is null.</exception>
+	public void Add<T>(Func<T, Task> asyncAction, T state = default!)
 	{
-		_disposeTasks.Clear();
+		ArgumentNullException.ThrowIfNull(asyncAction);
+		DisposeTasks.Push(async _ => await asyncAction(state));
 	}
 
 	/// <summary>
-	/// Dismisses all pending deferred actions without executing them. Alias for <see cref="Clear"/>.
+	/// Adds an asynchronous action with state to be executed when this scope is asynchronously disposed.
 	/// </summary>
-	public void Dismiss() => Clear();
+	/// <typeparam name="T">The type of the state object.</typeparam>
+	/// <param name="state">The state passed to the action.</param>
+	/// <param name="asyncAction">The asynchronous action to defer.</param>
+	/// <exception cref="ArgumentNullException">Thrown when <paramref name="asyncAction"/> is null.</exception>
+	public void Add<T>(T state, Func<T, Task> asyncAction) => Add(asyncAction, state);
+
+	/// <summary>
+	/// Adds an asynchronous action with cancellation support and optional state to be executed when this scope is asynchronously disposed.
+	/// </summary>
+	/// <typeparam name="T">The type of the state object.</typeparam>
+	/// <param name="asyncAction">The asynchronous action to defer.</param>
+	/// <param name="state">The optional state passed to the action.</param>
+	/// <exception cref="ArgumentNullException">Thrown when <paramref name="asyncAction"/> is null.</exception>
+	public void Add<T>(Func<T, CancellationToken, Task> asyncAction, T state = default!)
+	{
+		ArgumentNullException.ThrowIfNull(asyncAction);
+		DisposeTasks.Push(token => asyncAction(state, token));
+	}
+
+	/// <summary>
+	/// Adds an asynchronous action with cancellation support and state to be executed when this scope is asynchronously disposed.
+	/// </summary>
+	/// <typeparam name="T">The type of the state object.</typeparam>
+	/// <param name="state">The state passed to the action.</param>
+	/// <param name="asyncAction">The asynchronous action to defer.</param>
+	/// <exception cref="ArgumentNullException">Thrown when <paramref name="asyncAction"/> is null.</exception>
+	public void Add<T>(T state, Func<T, CancellationToken, Task> asyncAction) => Add(asyncAction, state);
+
+	/// <summary>
+	/// Adds a synchronous action with optional state to be executed when this scope is asynchronously disposed.
+	/// </summary>
+	/// <typeparam name="T">The type of the state object.</typeparam>
+	/// <param name="action">The action to defer.</param>
+	/// <param name="state">The optional state passed to the action.</param>
+	/// <exception cref="ArgumentNullException">Thrown when <paramref name="action"/> is null.</exception>
+	public void Add<T>(Action<T> action, T state = default!)
+	{
+		ArgumentNullException.ThrowIfNull(action);
+		DisposeTasks.Push(_ =>
+		{
+			action(state);
+			return Task.CompletedTask;
+		});
+	}
+
+	/// <summary>
+	/// Adds a synchronous action with state to be executed when this scope is asynchronously disposed.
+	/// </summary>
+	/// <typeparam name="T">The type of the state object.</typeparam>
+	/// <param name="state">The state passed to the action.</param>
+	/// <param name="action">The action to defer.</param>
+	/// <exception cref="ArgumentNullException">Thrown when <paramref name="action"/> is null.</exception>
+	public void Add<T>(T state, Action<T> action) => Add(action, state);
+
 
 	/// <summary>
 	/// Asynchronously releases the resources used by this instance.
@@ -197,16 +240,10 @@ public sealed class AsyncDefer : IAsyncDisposable
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private bool SignalDispose()
-	{
-		return Interlocked.CompareExchange(ref _disposeSignaled, 1, 0) != 1;
-	}
-
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private async Task HandleDisposeTasks(CancellationToken cancellationToken)
 	{
 		List<Exception>? exceptions = null;
-		while (_disposeTasks.TryPop(out Func<CancellationToken, Task>? disposable))
+		while (DisposeTasks.TryPop(out Func<CancellationToken, Task>? disposable))
 		{
 			try
 			{
@@ -255,6 +292,32 @@ public sealed class AsyncDefer : IAsyncDisposable
 	}
 
 	/// <summary>
+	/// Creates a deferred asynchronous clean-up action with state to avoid closure allocations.
+	/// </summary>
+	/// <typeparam name="T">The type of the state object.</typeparam>
+	/// <param name="state">The state passed to the action.</param>
+	/// <param name="asyncAction">The asynchronous action to defer.</param>
+	/// <returns>An asynchronous disposable <see cref="AsyncDefer"/> instance.</returns>
+	public static AsyncDefer Action<T>(T state, Func<T, Task> asyncAction)
+	{
+		ArgumentNullException.ThrowIfNull(asyncAction);
+		return new AsyncDefer(async () => await asyncAction(state));
+	}
+
+	/// <summary>
+	/// Creates a deferred synchronous clean-up action with state in an asynchronous context.
+	/// </summary>
+	/// <typeparam name="T">The type of the state object.</typeparam>
+	/// <param name="state">The state passed to the action.</param>
+	/// <param name="action">The action to defer.</param>
+	/// <returns>An asynchronous disposable <see cref="AsyncDefer"/> instance.</returns>
+	public static AsyncDefer Action<T>(T state, Action<T> action)
+	{
+		ArgumentNullException.ThrowIfNull(action);
+		return new AsyncDefer(() => action(state));
+	}
+
+	/// <summary>
 	/// Creates a deferred clean-up action that will execute synchronously when the returned <see cref="AsyncDefer"/> is disposed.
 	/// </summary>
 	/// <param name="action">The action to defer.</param>
@@ -286,12 +349,58 @@ public sealed class AsyncDefer : IAsyncDisposable
 	public static AsyncDefer Run(Action action) => new(action);
 
 	/// <summary>
+	/// Creates a deferred asynchronous clean-up action with state to avoid closure allocations.
+	/// </summary>
+	public static AsyncDefer Run<T>(T state, Func<T, CancellationToken, Task> asyncAction) => Action(state, asyncAction);
+
+	/// <summary>
+	/// Creates a deferred asynchronous clean-up action with state to avoid closure allocations.
+	/// </summary>
+	public static AsyncDefer Run<T>(T state, Func<T, Task> asyncAction) => Action(state, asyncAction);
+
+	/// <summary>
+	/// Creates a deferred synchronous clean-up action with state in an asynchronous context.
+	/// </summary>
+	public static AsyncDefer Run<T>(T state, Action<T> action) => Action(state, action);
+
+	/// <summary>
 	/// Creates an asynchronous deferred clean-up action.
 	/// Alias for <see cref="Action(Func{Task})"/>.
 	/// </summary>
 	/// <param name="asyncAction">The asynchronous action to defer.</param>
 	/// <returns>An asynchronous disposable <see cref="AsyncDefer"/> instance.</returns>
 	public static AsyncDefer Create(Func<Task> asyncAction) => new(asyncAction);
+
+	/// <summary>
+	/// Creates an asynchronous deferred clean-up action with cancellation support.
+	/// Alias for <see cref="Action(Func{CancellationToken, Task})"/>.
+	/// </summary>
+	/// <param name="asyncAction">The asynchronous action to defer.</param>
+	/// <returns>An asynchronous disposable <see cref="AsyncDefer"/> instance.</returns>
+	public static AsyncDefer Create(Func<CancellationToken, Task> asyncAction) => new(asyncAction);
+
+	/// <summary>
+	/// Creates a deferred clean-up action that will execute synchronously when the returned <see cref="AsyncDefer"/> is disposed.
+	/// Alias for <see cref="Action(Action)"/>.
+	/// </summary>
+	/// <param name="action">The action to defer.</param>
+	/// <returns>An asynchronous disposable <see cref="AsyncDefer"/> instance.</returns>
+	public static AsyncDefer Create(Action action) => new(action);
+
+	/// <summary>
+	/// Creates a deferred asynchronous clean-up action with state to avoid closure allocations.
+	/// </summary>
+	public static AsyncDefer Create<T>(T state, Func<T, CancellationToken, Task> asyncAction) => Action(state, asyncAction);
+
+	/// <summary>
+	/// Creates a deferred asynchronous clean-up action with state to avoid closure allocations.
+	/// </summary>
+	public static AsyncDefer Create<T>(T state, Func<T, Task> asyncAction) => Action(state, asyncAction);
+
+	/// <summary>
+	/// Creates a deferred synchronous clean-up action with state in an asynchronous context.
+	/// </summary>
+	public static AsyncDefer Create<T>(T state, Action<T> action) => Action(state, action);
 
 	/// <summary>
 	/// Creates a new asynchronous deferral scope that can register multiple actions.

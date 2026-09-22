@@ -14,7 +14,7 @@ public abstract partial class AsyncBackgroundService : AsyncDisposableBase, IHos
 	protected AsyncBackgroundService(ILogger logger)
 	{
 		_logger = logger;
-		DisposableBag.Add(() => _stoppingCts.Cancel());
+		DisposableBag.Add(_stoppingCts, static cts => cts.Cancel());
 	}
 
 	/// <summary>
@@ -48,14 +48,11 @@ public abstract partial class AsyncBackgroundService : AsyncDisposableBase, IHos
 			return;
 		}
 
-		try
+		await using AsyncDefer _ = Disposables.DeferAsync((this, _executingTask, cancellationToken), static async (state, _) =>
 		{
-			await _stoppingCts.CancelAsync();
-		}
-		finally
-		{
-			await ShutdownService(_executingTask, cancellationToken);
-		}
+			await state.Item1.ShutdownService(state._executingTask, state.cancellationToken);
+		});
+		await _stoppingCts.CancelAsync();
 	}
 
 	private Task ShutdownService(Task executingTask, CancellationToken cancellationToken)

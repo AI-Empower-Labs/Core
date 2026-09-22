@@ -36,7 +36,15 @@ public static class EnumerableExtensions
 			using SemaphoreSlim semaphore = new(maxDegreeOfParallelism);
 			using CancellationTokenSource tokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-			try
+			await using (Disposables.DeferAsync((tokenSource, queue), static async (state, token) =>
+				{
+					await state.tokenSource.CancelAsync();
+					while (state.queue.Count > 0)
+					{
+						Task<TResult> remaining = state.queue.Dequeue();
+						await remaining.WithSilentException(cancellationToken: token).ConfigureAwait(false);
+					}
+				}))
 			{
 				foreach (T item in source)
 				{
@@ -53,42 +61,24 @@ public static class EnumerableExtensions
 					yield return await DequeueHandled(queue, tokenSource).ConfigureAwait(false);
 				}
 			}
-			finally
-			{
-				await tokenSource.CancelAsync();
-				while (queue.Count > 0)
-				{
-					Task<TResult> remaining = queue.Dequeue();
-					try
-					{
-						await remaining.ConfigureAwait(false);
-					}
-					catch
-					{
-						// Ignore exceptions from canceled/in-flight tasks during teardown
-					}
-				}
-			}
 
 			yield break;
 
 			async Task<TResult> RunSelector(T item, CancellationToken token, SemaphoreSlim concurrencyLimiter)
 			{
-				try
-				{
-					return await selector(item, token).ConfigureAwait(false);
-				}
-				finally
+				await using Defer _ = Disposables.Defer(concurrencyLimiter, static limiter =>
 				{
 					try
 					{
-						concurrencyLimiter.Release();
+						limiter.Release();
 					}
 					catch (ObjectDisposedException)
 					{
 						// Ignore in case of teardown
 					}
-				}
+				});
+
+				return await selector(item, token).ConfigureAwait(false);
 			}
 
 			static async Task<TResult> DequeueHandled(Queue<Task<TResult>> q, CancellationTokenSource cancellationTokenSource)
@@ -149,7 +139,15 @@ public static class EnumerableExtensions
 			using SemaphoreSlim semaphore = new(maxDegreeOfParallelism);
 			using CancellationTokenSource tokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-			try
+			await using (Disposables.DeferAsync((tokenSource, queue), static async (state, token) =>
+				{
+					await state.tokenSource.CancelAsync();
+					while (state.queue.Count > 0)
+					{
+						Task<TResult?> remaining = state.queue.Dequeue();
+						await remaining.WithSilentException(cancellationToken: token).ConfigureAwait(false);
+					}
+				}))
 			{
 				foreach (T item in source)
 				{
@@ -166,42 +164,24 @@ public static class EnumerableExtensions
 					yield return await DequeueHandled(queue, tokenSource).ConfigureAwait(false);
 				}
 			}
-			finally
-			{
-				await tokenSource.CancelAsync();
-				while (queue.Count > 0)
-				{
-					Task<TResult?> remaining = queue.Dequeue();
-					try
-					{
-						await remaining.ConfigureAwait(false);
-					}
-					catch
-					{
-						// Ignore exceptions from canceled/in-flight tasks during teardown
-					}
-				}
-			}
 
 			yield break;
 
 			async Task<TResult?> RunSelector(T item, CancellationToken token, SemaphoreSlim concurrencyLimiter)
 			{
-				try
-				{
-					return await selector(item, token).ConfigureAwait(false);
-				}
-				finally
+				await using Defer _ = Disposables.Defer(concurrencyLimiter, static limiter =>
 				{
 					try
 					{
-						concurrencyLimiter.Release();
+						limiter.Release();
 					}
 					catch (ObjectDisposedException)
 					{
 						// Ignore in case of teardown
 					}
-				}
+				});
+
+				return await selector(item, token).ConfigureAwait(false);
 			}
 
 			static async Task<TResult?> DequeueHandled(Queue<Task<TResult?>> q, CancellationTokenSource cancellationTokenSource)

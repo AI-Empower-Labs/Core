@@ -24,6 +24,11 @@ public static class HostRunner
 	{
 		using CancellationTokenSource cts = new();
 		using Startup startup = new();
+		await using AsyncDefer _ = Disposables.DeferAsync(cts, static async (tokenSource, _) =>
+		{
+			Log.Logger.Information("Host runner stopping for {HostType}", typeof(THost).Name);
+			await tokenSource.CancelAsync();
+		});
 		try
 		{
 			Log.Logger.Information("Starting host runner for {HostType} with {AssemblyCount} assemblies", typeof(THost).Name, assemblies.Length);
@@ -58,11 +63,6 @@ public static class HostRunner
 		{
 			Log.Logger.Fatal(ex, "Host terminated unexpectedly");
 			return -1;
-		}
-		finally
-		{
-			Log.Logger.Information("Host runner stopping for {HostType}", typeof(THost).Name);
-			await cts.CancelAsync();
 		}
 	}
 }

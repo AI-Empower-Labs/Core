@@ -55,16 +55,10 @@ public abstract class CronExecutionAsyncBackgroundService(
 
 			if (stoppingToken.IsCancellationRequested) break;
 			IDisposable? scope = _logger.BeginScope("Occurence: {Occurence}", nextOccurence);
-			try
-			{
-				_logger.LogInformation("Service execution");
-				await ExecutePeriodicServiceTask();
-				_logger.LogInformation("Service execution finished");
-			}
-			finally
-			{
-				scope?.Dispose();
-			}
+			await using Defer _ = Disposables.Defer(scope, static s => s?.Dispose());
+			_logger.LogInformation("Service execution");
+			await ExecutePeriodicServiceTask();
+			_logger.LogInformation("Service execution finished");
 		}
 
 		return;
@@ -72,16 +66,14 @@ public abstract class CronExecutionAsyncBackgroundService(
 		async Task ExecutePeriodicServiceTask()
 		{
 			Stopwatch stopwatch = Stopwatch.StartNew();
-			try
+			await using Defer _ = Disposables.Defer((stopwatch, _logger), static state =>
 			{
-				await Task.Run(() => ExecutePeriodically(stoppingToken)
-					.WithExceptionProtection(_logger, "Service execution failed!", cancellationToken: stoppingToken), stoppingToken);
-			}
-			finally
-			{
-				stopwatch.Stop();
-				_logger.LogInformation("Service execution took {Time}", stopwatch.Elapsed);
-			}
+				state.stopwatch.Stop();
+				state._logger.LogInformation("Service execution took {Time}", state.stopwatch.Elapsed);
+			});
+
+			await Task.Run(() => ExecutePeriodically(stoppingToken)
+				.WithExceptionProtection(_logger, "Service execution failed!", cancellationToken: stoppingToken), stoppingToken);
 		}
 	}
 
