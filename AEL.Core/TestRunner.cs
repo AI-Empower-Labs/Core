@@ -32,25 +32,60 @@ public static class TestRunner
 		where THostApplicationBuilder : IHostApplicationBuilder
 	{
 		Startup startup = new();
-		THost host = await HostBuilder.Build(args, create,
-			builder =>
-			{
-				configureBuilder?.Invoke(builder);
-				if (startHostedServices) return;
-				// Remove IHostedService service descriptors
-				foreach (ServiceDescriptor serviceDescriptor in builder.Services.ToArray())
+		THost? host = default;
+		try
+		{
+			host = await HostBuilder.Build(args, create,
+				builder =>
 				{
-					if (serviceDescriptor.ServiceType == typeof(IHostedService))
+					configureBuilder?.Invoke(builder);
+					if (startHostedServices) return;
+					// Remove IHostedService service descriptors
+					foreach (ServiceDescriptor serviceDescriptor in builder.Services.ToArray())
 					{
-						builder.Services.Remove(serviceDescriptor);
+						if (serviceDescriptor.ServiceType == typeof(IHostedService))
+						{
+							builder.Services.Remove(serviceDescriptor);
+						}
+					}
+				},
+				build, configureHost, cancellationToken, assemblies);
+			await host.StartAsync(cancellationToken);
+			TestRunner<THost> testRunner = new(host);
+			testRunner.DisposableBag.Add(startup);
+			testRunner.DisposableBag.Add(async token => await host.StopAsync(token));
+			return testRunner;
+		}
+		catch
+		{
+			if (host is not null)
+			{
+				if (host is IAsyncDisposable asyncDisposable)
+				{
+					try
+					{
+						await asyncDisposable.DisposeAsync();
+					}
+					catch
+					{
+						// Ignore disposal failure
 					}
 				}
-			},
-			build, configureHost, cancellationToken, assemblies);
-		await host.StartAsync(cancellationToken);
-		TestRunner<THost> testRunner = new(host);
-		testRunner.DisposableBag.Add(startup);
-		testRunner.DisposableBag.Add(async token => await host.StopAsync(token));
-		return testRunner;
+				else
+				{
+					try
+					{
+						host.Dispose();
+					}
+					catch
+					{
+						// Ignore disposal failure
+					}
+				}
+			}
+
+			startup.Dispose();
+			throw;
+		}
 	}
 }

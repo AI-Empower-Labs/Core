@@ -177,6 +177,7 @@ public static class Nanoid
 	/// <exception cref="ArgumentOutOfRangeException">If <paramref name="alphabet"/>'s length is outside the range [0, 256] or if <paramref name="size"/> is less than or equal to 0.</exception>
 	public static string Generate(Random random, string alphabet = Alphabets.Default, int size = 21)
 	{
+		ArgumentNullException.ThrowIfNull(random);
 		Validate(alphabet, size);
 		return GenerateImpl(random, alphabet, size);
 	}

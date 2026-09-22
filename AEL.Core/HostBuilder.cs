@@ -32,13 +32,43 @@ public static class HostBuilder
 
 		Log.Logger.Debug("Building host {HostType}", typeof(THost).Name);
 		THost application = build(builder);
-		Log.Logger.Debug("Running automatic host setup for {HostType}", typeof(THost).Name);
-		await application.AutomaticHostSetup<THost>(cancellationToken, assemblies);
-		Log.Logger.Debug("Automatic host setup completed for {HostType}", typeof(THost).Name);
-		Log.Logger.Debug("Running host configuration for {HostType}", typeof(THost).Name);
-		configureHost?.Invoke(application);
+		try
+		{
+			Log.Logger.Debug("Running automatic host setup for {HostType}", typeof(THost).Name);
+			await application.AutomaticHostSetup<THost>(cancellationToken, assemblies);
+			Log.Logger.Debug("Automatic host setup completed for {HostType}", typeof(THost).Name);
+			Log.Logger.Debug("Running host configuration for {HostType}", typeof(THost).Name);
+			configureHost?.Invoke(application);
 
-		Log.Logger.Debug("Host {HostType} built", typeof(THost).Name);
-		return application;
+			Log.Logger.Debug("Host {HostType} built", typeof(THost).Name);
+			return application;
+		}
+		catch
+		{
+			if (application is IAsyncDisposable asyncDisposable)
+			{
+				try
+				{
+					await asyncDisposable.DisposeAsync();
+				}
+				catch (Exception ex)
+				{
+					Log.Logger.Warning(ex, "Failed to asynchronously dispose host after build failure");
+				}
+			}
+			else
+			{
+				try
+				{
+					application.Dispose();
+				}
+				catch (Exception ex)
+				{
+					Log.Logger.Warning(ex, "Failed to dispose host after build failure");
+				}
+			}
+
+			throw;
+		}
 	}
 }
