@@ -38,15 +38,20 @@ public abstract class CronExecutionAsyncBackgroundService(
 				continue;
 			}
 
-			TimeSpan timeToWait = nextOccurence.Value - DateTimeOffset.UtcNow;
-			if (timeToWait <= TimeSpan.Zero)
+			TimeSpan maxDelay = TimeSpan.FromDays(24);
+			while (nextOccurence.Value > DateTimeOffset.UtcNow && !stoppingToken.IsCancellationRequested)
 			{
-				await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
-				continue;
+				TimeSpan timeToWait = nextOccurence.Value - DateTimeOffset.UtcNow;
+				if (timeToWait <= TimeSpan.Zero)
+				{
+					break;
+				}
+
+				TimeSpan delay = timeToWait > maxDelay ? maxDelay : timeToWait;
+				await Task.Delay(delay, stoppingToken);
 			}
 
 			lastOccurence = nextOccurence;
-			await Task.Delay(timeToWait, stoppingToken);
 
 			if (stoppingToken.IsCancellationRequested) break;
 			IDisposable? scope = _logger.BeginScope("Occurence: {Occurence}", nextOccurence);
