@@ -4,11 +4,11 @@ namespace System.IO;
 
 public sealed class ProgressStream(
 	Stream stream,
-	Action<int>? readProgress,
-	Action<int>? writeProgress) : Stream
+	Action<long>? readProgress,
+	Action<long>? writeProgress) : Stream
 {
-	private int _totalReadBytes;
-	private int _totalWriteBytes;
+	private long _totalReadBytes;
+	private long _totalWriteBytes;
 
 	/// <inheritdoc />
 	public override void Flush()
@@ -31,7 +31,7 @@ public sealed class ProgressStream(
 	/// <inheritdoc />
 	public override int Read(byte[] buffer, int offset, int count)
 	{
-		ValidateBufferArgs(buffer, offset, count);
+		ValidateBufferArguments(buffer, offset, count);
 		int bytesRead = stream.Read(buffer, offset, count);
 		UpdateReadBytes(bytesRead);
 		return bytesRead;
@@ -40,7 +40,7 @@ public sealed class ProgressStream(
 	/// <inheritdoc />
 	public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
 	{
-		ValidateBufferArgs(buffer, offset, count);
+		ValidateBufferArguments(buffer, offset, count);
 		int bytesRead = await stream.ReadAsync(buffer.AsMemory(offset, count), cancellationToken);
 		UpdateReadBytes(bytesRead);
 		return bytesRead;
@@ -61,7 +61,7 @@ public sealed class ProgressStream(
 	/// <inheritdoc />
 	public override void Write(byte[] buffer, int offset, int count)
 	{
-		ValidateBufferArgs(buffer, offset, count);
+		ValidateBufferArguments(buffer, offset, count);
 		stream.Write(buffer, offset, count);
 		UpdateWriteBytes(count);
 	}
@@ -69,7 +69,7 @@ public sealed class ProgressStream(
 	/// <inheritdoc />
 	public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
 	{
-		ValidateBufferArgs(buffer, offset, count);
+		ValidateBufferArguments(buffer, offset, count);
 		await stream.WriteAsync(buffer.AsMemory(offset, count), cancellationToken);
 		UpdateWriteBytes(count);
 	}
@@ -102,33 +102,5 @@ public sealed class ProgressStream(
 		}
 
 		base.Dispose(disposing);
-	}
-
-	/// <summary>
-	/// Validates the buffer, offset, and count arguments for read/write calls.
-	/// </summary>
-	/// <param name="buffer">The buffer to read or write.</param>
-	/// <param name="offset">The offset within <paramref name="buffer"/>.</param>
-	/// <param name="count">The number of bytes to read or write.</param>
-	/// <exception cref="ArgumentNullException">Thrown if <paramref name="buffer"/> is <c>null</c>.</exception>
-	/// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="offset"/> or <paramref name="count"/> are invalid.</exception>
-	/// <exception cref="ArgumentException">Thrown if the sum of <paramref name="offset"/> and <paramref name="count"/> are invalid.</exception>
-	private static void ValidateBufferArgs(byte[] buffer, int offset, int count)
-	{
-		ArgumentNullException.ThrowIfNull(buffer);
-		if (offset < 0)
-		{
-			throw new ArgumentOutOfRangeException(nameof(offset), "Offset cannot be negative.");
-		}
-
-		if (count < 0)
-		{
-			throw new ArgumentOutOfRangeException(nameof(count), "Count cannot be negative.");
-		}
-
-		if (offset + count > buffer.Length)
-		{
-			throw new ArgumentException("The sum of offset and count is greater than the buffer length.", nameof(buffer));
-		}
 	}
 }

@@ -24,7 +24,7 @@ public static class HostRunner
 	{
 		using CancellationTokenSource cts = new();
 		using Startup startup = new();
-		await using AsyncDefer _ = Disposables.DeferAsync(cts, static async (tokenSource, _) =>
+		await using AsyncDefer _ = AsyncDefer.Action(cts, static async (tokenSource, _) =>
 		{
 			Log.Logger.Information("Host runner stopping for {HostType}", typeof(THost).Name);
 			await tokenSource.CancelAsync();

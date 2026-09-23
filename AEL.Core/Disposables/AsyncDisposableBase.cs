@@ -1,12 +1,10 @@
 // ReSharper disable CheckNamespace
 
-using System.Runtime.CompilerServices;
-
 namespace System;
 
 public abstract class AsyncDisposableBase : IAsyncDisposable
 {
-	private AsyncDisposableBag? _disposableBag;
+	private AsyncDefer? _disposableBag;
 	private Lazy<CancellationTokenSource>? _lazyCancellationTokenSource;
 	private long _disposeSignaled;
 
@@ -14,23 +12,9 @@ public abstract class AsyncDisposableBase : IAsyncDisposable
 
 	public bool IsDisposed => Interlocked.Read(ref _disposeSignaled) != 0;
 
-	private Lazy<CancellationTokenSource> LazyCancellationTokenSource
-	{
-		get
-		{
-			_lazyCancellationTokenSource ??= new(() => new CancellationTokenSource(), true);
-			return _lazyCancellationTokenSource;
-		}
-	}
+	private Lazy<CancellationTokenSource> LazyCancellationTokenSource => _lazyCancellationTokenSource ??= new Lazy<CancellationTokenSource>(() => new CancellationTokenSource(), true);
 
-	public AsyncDisposableBag DisposableBag
-	{
-		get
-		{
-			_disposableBag ??= new AsyncDisposableBag();
-			return _disposableBag;
-		}
-	}
+	public AsyncDefer DisposableBag => _disposableBag ??= new AsyncDefer();
 
 	public async ValueTask DisposeAsync()
 	{
@@ -41,28 +25,19 @@ public abstract class AsyncDisposableBase : IAsyncDisposable
 
 		try
 		{
-			await DisposeBag();
+			if (_disposableBag is not null)
+			{
+				using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
+				await _disposableBag.DisposeAsync(timeout.Token);
+			}
 		}
 		finally
 		{
 			CancelCancellationTokenSource();
-			SuppressFinalize();
+			GC.SuppressFinalize(this);
 		}
 	}
 
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private async Task DisposeBag()
-	{
-		if (_disposableBag is not null)
-		{
-			using CancellationTokenSource timeout = new(10000);
-			CancellationTokenSource cancellationTokenSource = CancellationTokenSource
-				.CreateLinkedTokenSource(LazyCancellationTokenSource.Value.Token, timeout.Token);
-			await _disposableBag.DisposeAsync(cancellationTokenSource.Token);
-		}
-	}
-
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private void CancelCancellationTokenSource()
 	{
 		if (_lazyCancellationTokenSource is not null && _lazyCancellationTokenSource.IsValueCreated)
@@ -72,17 +47,5 @@ public abstract class AsyncDisposableBase : IAsyncDisposable
 		}
 	}
 
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private bool SignalDispose()
-	{
-		return Interlocked.CompareExchange(ref _disposeSignaled, 1, 0) != 1;
-	}
-
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private void SuppressFinalize()
-	{
-		// Take yourself off the finalization queue
-		// to prevent finalization from executing a second time.
-		GC.SuppressFinalize(this);
-	}
+	private bool SignalDispose() => Interlocked.CompareExchange(ref _disposeSignaled, 1, 0) == 0;
 }

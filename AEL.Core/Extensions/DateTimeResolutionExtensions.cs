@@ -21,11 +21,6 @@ public static class DateTimeResolutionExtensions
 		}
 	}
 
-	/// <summary>
-	///     Represents the resolution with which to floor or ceil. This could be to ceil to the nearest hour, day, month or
-	///     year
-	/// </summary>
-	[Flags]
 	public enum DateTimeResolution
 	{
 		Millisecond = 0,

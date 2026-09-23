@@ -1,37 +1,20 @@
 // ReSharper disable CheckNamespace
 
-using System.Runtime.CompilerServices;
-
 namespace System;
 
 public abstract class DisposableBase : IDisposable
 {
-	private DisposableBag? _disposableBag;
+	private Defer? _disposableBag;
 	private Lazy<CancellationTokenSource>? _lazyCancellationTokenSource;
-
 	private long _disposeSignaled;
 
 	protected CancellationToken CancellationToken => LazyCancellationTokenSource.Value.Token;
 
 	public bool IsDisposed => Interlocked.Read(ref _disposeSignaled) != 0;
 
-	private Lazy<CancellationTokenSource> LazyCancellationTokenSource
-	{
-		get
-		{
-			_lazyCancellationTokenSource ??= new(() => new CancellationTokenSource(), true);
-			return _lazyCancellationTokenSource;
-		}
-	}
+	private Lazy<CancellationTokenSource> LazyCancellationTokenSource => _lazyCancellationTokenSource ??= new Lazy<CancellationTokenSource>(() => new CancellationTokenSource(), true);
 
-	public DisposableBag DisposableBag
-	{
-		get
-		{
-			_disposableBag ??= new DisposableBag();
-			return _disposableBag;
-		}
-	}
+	public Defer DisposableBag => _disposableBag ??= new Defer();
 
 	public void Dispose()
 	{
@@ -47,11 +30,10 @@ public abstract class DisposableBase : IDisposable
 		finally
 		{
 			CancelCancellationTokenSource();
-			PreventObjectFinalization();
+			GC.SuppressFinalize(this);
 		}
 	}
 
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private void CancelCancellationTokenSource()
 	{
 		if (_lazyCancellationTokenSource is not null && _lazyCancellationTokenSource.IsValueCreated)
@@ -61,15 +43,5 @@ public abstract class DisposableBase : IDisposable
 		}
 	}
 
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private bool SignalDispose()
-	{
-		return Interlocked.CompareExchange(ref _disposeSignaled, 1, 0) != 1;
-	}
-
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private void PreventObjectFinalization() =>
-		// Take yourself off the finalization queue
-		// to prevent finalization from executing a second time.
-		GC.SuppressFinalize(this);
+	private bool SignalDispose() => Interlocked.CompareExchange(ref _disposeSignaled, 1, 0) == 0;
 }

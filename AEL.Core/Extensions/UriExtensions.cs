@@ -10,17 +10,11 @@ public static class UriExtensions
 		/// <summary>
 		/// Joins the two URIs together.
 		/// </summary>
-		/// <param name="left"></param>
-		/// <param name="right"></param>
-		/// <returns></returns>
 		public static Uri operator /(Uri left, Uri right) => new(left, right);
 
 		/// <summary>
 		/// Joins the URI with the specified relative path.
 		/// </summary>
-		/// <param name="left"></param>
-		/// <param name="right"></param>
-		/// <returns></returns>
 		public static Uri operator /(Uri left, string right) => new(left, right);
 
 		/// <summary>

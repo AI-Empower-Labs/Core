@@ -13,7 +13,7 @@ public sealed class StartupTests
 		CultureInfo? previousUICulture = CultureInfo.DefaultThreadCurrentUICulture;
 		Func<Type, System.Reflection.MemberInfo?, System.Linq.Expressions.LambdaExpression?, string>? previousResolver =
 			ValidatorOptions.Global.DisplayNameResolver;
-		using Defer _ = System.Disposables.Defer(() =>
+		using Defer _ = System.Defer.Action(() =>
 		{
 			CultureInfo.DefaultThreadCurrentCulture = previousCulture;
 			CultureInfo.DefaultThreadCurrentUICulture = previousUICulture;

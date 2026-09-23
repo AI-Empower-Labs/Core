@@ -33,7 +33,7 @@ public static class AsyncEnumerableExtensions
 			using CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 			Task producerTask = Producer(linkedCts.Token);
 
-			await using (Disposables.DeferAsync((linkedCts, channel, producerTask), static async (state, token) =>
+			await using (AsyncDefer.Action((linkedCts, channel, producerTask), static async (state, token) =>
 				{
 					await state.linkedCts.CancelAsync();
 					state.channel.Writer.TryComplete();
@@ -80,7 +80,7 @@ public static class AsyncEnumerableExtensions
 			using CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 			Task producerTask = Producer(linkedCts.Token);
 
-			await using (Disposables.DeferAsync((linkedCts, channel, producerTask), static async (state, token) =>
+			await using (AsyncDefer.Action((linkedCts, channel, producerTask), static async (state, token) =>
 				{
 					await state.linkedCts.CancelAsync();
 					state.channel.Writer.TryComplete();
@@ -130,7 +130,7 @@ public static class AsyncEnumerableExtensions
 			using SemaphoreSlim semaphore = new(maxDegreeOfParallelism);
 			using CancellationTokenSource tokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-			await using (Disposables.DeferAsync((tokenSource, queue), static async (state, token) =>
+			await using (AsyncDefer.Action((tokenSource, queue), static async (state, token) =>
 				{
 					await state.tokenSource.CancelAsync();
 					while (state.queue.Count > 0)
@@ -162,7 +162,7 @@ public static class AsyncEnumerableExtensions
 
 			async Task<TResult> RunSelector(T item, CancellationToken token, SemaphoreSlim concurrencyLimiter)
 			{
-				await using Defer _ = Disposables.Defer(concurrencyLimiter, static limiter =>
+				await using Defer _ = Defer.Action(concurrencyLimiter, static limiter =>
 				{
 					try
 					{

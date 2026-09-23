@@ -2,7 +2,7 @@ namespace AEL.Core.Tests.Disposables;
 
 using System;
 using System.Collections.Generic;
-
+using System.Threading.Tasks;
 using Xunit;
 
 public sealed class DeferTests
@@ -32,18 +32,6 @@ public sealed class DeferTests
     }
 
     [Fact]
-    public void Defer_RunFactory_ExecutesOnDispose()
-    {
-        bool executed = false;
-        using (Defer.Run(() => executed = true))
-        {
-            Assert.False(executed);
-        }
-
-        Assert.True(executed);
-    }
-
-    [Fact]
     public void Defer_ActionWithState_ExecutesWithoutClosureAllocation()
     {
         List<string> list = [];
@@ -62,11 +50,10 @@ public sealed class DeferTests
         using (Defer defer = new())
         {
             defer.Add(list, static state => state.Add("from-add"));
-            defer.Add(static (List<string> state) => state.Add("from-optional"), list);
             Assert.Empty(list);
         }
 
-        Assert.Equal(["from-optional", "from-add"], list);
+        Assert.Equal(["from-add"], list);
     }
 
     [Fact]
@@ -112,16 +99,15 @@ public sealed class DeferTests
     }
 
     [Fact]
-    public void Defer_ScopeMethod_ExecutesInLifoOrder()
+    public async Task Defer_SupportsAsyncDisposal()
     {
-        List<int> order = [];
-        using (Defer defer = Defer.Scope())
+        bool executed = false;
+        await using (new Defer(() => executed = true))
         {
-            defer.Add(() => order.Add(10));
-            defer.Add(() => order.Add(20));
+            Assert.False(executed);
         }
 
-        Assert.Equal([20, 10], order);
+        Assert.True(executed);
     }
 
     [Fact]
@@ -162,22 +148,15 @@ public sealed class DeferTests
     }
 
     [Fact]
-    public void Defer_Clear_CancelsExecution()
-    {
-        bool executed = false;
-        Defer defer = new(() => executed = true);
-        defer.Clear();
-        defer.Dispose();
-
-        Assert.False(executed);
-    }
-
-    [Fact]
     public void Defer_Dismiss_CancelsExecution()
     {
         bool executed = false;
         Defer defer = new(() => executed = true);
+        defer.Add(() => executed = true);
+        Assert.Equal(2, defer.Count);
+
         defer.Dismiss();
+        Assert.Equal(0, defer.Count);
         defer.Dispose();
 
         Assert.False(executed);
@@ -190,30 +169,10 @@ public sealed class DeferTests
         Assert.Throws<ArgumentNullException>(() => new Defer((IDisposable)null!));
         Assert.Throws<ArgumentNullException>(() => Defer.Action(null!));
         Assert.Throws<ArgumentNullException>(() => Defer.Action<object>(null!, null!));
-        Assert.Throws<ArgumentNullException>(() => Defer.Run(null!));
 
         Defer defer = new();
         Assert.Throws<ArgumentNullException>(() => defer.Add((Action)null!));
         Assert.Throws<ArgumentNullException>(() => defer.Add((IDisposable)null!));
-    }
-
-    [Fact]
-    public void Disposables_Defer_HelperMethods_Work()
-    {
-        bool executed1 = false;
-        using (Disposables.Defer(() => executed1 = true))
-        {
-            Assert.False(executed1);
-        }
-        Assert.True(executed1);
-
-        List<int> order = [];
-        using (Defer defer = Disposables.Defer())
-        {
-            defer.Add(() => order.Add(1));
-            defer.Add(() => order.Add(2));
-        }
-        Assert.Equal([2, 1], order);
     }
 
     private sealed class DisposableItem(Action onDispose) : IDisposable

@@ -51,7 +51,7 @@ public sealed class HostingLifecycleTests
     public async Task TestRunner_Start_WhenBuildOrStartFails_DisposesStartupAndHost()
     {
         CultureInfo? previousCulture = CultureInfo.DefaultThreadCurrentCulture;
-        using Defer _ = System.Disposables.Defer(() => CultureInfo.DefaultThreadCurrentCulture = previousCulture);
+        using Defer _ = System.Defer.Action(() => CultureInfo.DefaultThreadCurrentCulture = previousCulture);
         CultureInfo danish = CultureInfo.GetCultureInfo("da-DK");
         TrackingHost? trackingHost = null;
 

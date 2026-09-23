@@ -41,22 +41,6 @@ public sealed class AsyncDeferTests
     }
 
     [Fact]
-    public async Task AsyncDefer_RunFactory_ExecutesOnDisposeAsync()
-    {
-        bool executed = false;
-        await using (AsyncDefer.Run(async () =>
-        {
-            await Task.Yield();
-            executed = true;
-        }))
-        {
-            Assert.False(executed);
-        }
-
-        Assert.True(executed);
-    }
-
-    [Fact]
     public async Task AsyncDefer_ActionWithState_ExecutesOnDisposeAsync()
     {
         List<string> list = [];
@@ -89,22 +73,11 @@ public sealed class AsyncDeferTests
                 state.Add("task");
             });
             defer.Add(list, static state => state.Add("sync"));
-            defer.Add(static (List<string> state, CancellationToken _) =>
-            {
-                state.Add("optional-task-ct");
-                return Task.CompletedTask;
-            }, list);
-            defer.Add(static (List<string> state) =>
-            {
-                state.Add("optional-task");
-                return Task.CompletedTask;
-            }, list);
-            defer.Add(static (List<string> state) => state.Add("optional-sync"), list);
 
             Assert.Empty(list);
         }
 
-        Assert.Equal(["optional-sync", "optional-task", "optional-task-ct", "sync", "task", "task-ct"], list);
+        Assert.Equal(["sync", "task", "task-ct"], list);
     }
 
     [Fact]
@@ -148,27 +121,6 @@ public sealed class AsyncDeferTests
         }
 
         Assert.Equal(["second", "first"], order);
-    }
-
-    [Fact]
-    public async Task AsyncDefer_ScopeMethod_ExecutesInLifoOrder()
-    {
-        List<int> order = [];
-        await using (AsyncDefer defer = AsyncDefer.Scope())
-        {
-            defer.Add(async () =>
-            {
-                await Task.Yield();
-                order.Add(10);
-            });
-            defer.Add(async () =>
-            {
-                await Task.Yield();
-                order.Add(20);
-            });
-        }
-
-        Assert.Equal([20, 10], order);
     }
 
     [Fact]
@@ -233,22 +185,6 @@ public sealed class AsyncDeferTests
     }
 
     [Fact]
-    public async Task AsyncDefer_Clear_CancelsExecution()
-    {
-        bool executed = false;
-        AsyncDefer defer = new(async () =>
-        {
-            await Task.Yield();
-            executed = true;
-        });
-
-        defer.Clear();
-        await defer.DisposeAsync(TestContext.Current.CancellationToken);
-
-        Assert.False(executed);
-    }
-
-    [Fact]
     public async Task AsyncDefer_Dismiss_CancelsExecution()
     {
         bool executed = false;
@@ -289,7 +225,6 @@ public sealed class AsyncDeferTests
         Assert.Throws<ArgumentNullException>(() => new AsyncDefer((IAsyncDisposable)null!));
         Assert.Throws<ArgumentNullException>(() => new AsyncDefer((IDisposable)null!));
         Assert.Throws<ArgumentNullException>(() => AsyncDefer.Action((Func<Task>)null!));
-        Assert.Throws<ArgumentNullException>(() => AsyncDefer.Run((Func<Task>)null!));
 
         AsyncDefer defer = new();
         Assert.Throws<ArgumentNullException>(() => defer.Add((Func<Task>)null!));
@@ -297,52 +232,6 @@ public sealed class AsyncDeferTests
         Assert.Throws<ArgumentNullException>(() => defer.Add((Action)null!));
         Assert.Throws<ArgumentNullException>(() => defer.Add((IAsyncDisposable)null!));
         Assert.Throws<ArgumentNullException>(() => defer.Add((IDisposable)null!));
-    }
-
-    [Fact]
-    public async Task Disposables_DeferAsync_HelperMethods_Work()
-    {
-        bool executed1 = false;
-        await using (Disposables.DeferAsync(async () =>
-        {
-            await Task.Yield();
-            executed1 = true;
-        }))
-        {
-            Assert.False(executed1);
-        }
-        Assert.True(executed1);
-
-        List<int> order = [];
-        await using (AsyncDefer defer = Disposables.DeferAsync())
-        {
-            defer.Add(() => order.Add(1));
-            defer.Add(() => order.Add(2));
-        }
-        Assert.Equal([2, 1], order);
-    }
-
-    [Fact]
-    public async Task Defer_Async_StaticBridge_Works()
-    {
-        bool executed = false;
-        await using (Defer.Async(async () =>
-        {
-            await Task.Yield();
-            executed = true;
-        }))
-        {
-            Assert.False(executed);
-        }
-        Assert.True(executed);
-
-        List<int> order = [];
-        await using (AsyncDefer defer = Defer.AsyncScope())
-        {
-            defer.Add(() => order.Add(1));
-            defer.Add(() => order.Add(2));
-        }
-        Assert.Equal([2, 1], order);
     }
 
     private sealed class SyncItem(Action onDispose) : IDisposable

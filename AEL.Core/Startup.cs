@@ -19,7 +19,7 @@ public sealed class Startup : DisposableBase
 	private readonly Encoding _previousOutputEncoding;
 	private readonly Encoding _previousInputEncoding;
 	private readonly CultureInfo? _previousCulture;
-	private readonly CultureInfo? _previousUICulture;
+	private readonly CultureInfo? _previousUiCulture;
 	private readonly Func<Type, MemberInfo?, LambdaExpression?, string>? _previousDisplayNameResolver;
 	private readonly UnhandledExceptionEventHandler _unhandledExceptionHandler;
 	private readonly EventHandler<UnobservedTaskExceptionEventArgs> _unobservedTaskExceptionHandler;
@@ -31,7 +31,7 @@ public sealed class Startup : DisposableBase
 		_previousOutputEncoding = Console.OutputEncoding;
 		_previousInputEncoding = Console.InputEncoding;
 		_previousCulture = CultureInfo.DefaultThreadCurrentCulture;
-		_previousUICulture = CultureInfo.DefaultThreadCurrentUICulture;
+		_previousUiCulture = CultureInfo.DefaultThreadCurrentUICulture;
 		_previousDisplayNameResolver = ValidatorOptions.Global.DisplayNameResolver;
 
 		Log.Logger = new LoggerConfiguration()
@@ -42,10 +42,8 @@ public sealed class Startup : DisposableBase
 			.WriteTo.OpenTelemetry(_ => { })
 			.CreateBootstrapLogger();
 
-		// Set a 2-second timeout for all Regex operations globally
 		AppDomain.CurrentDomain.SetData("REGEX_DEFAULT_MATCH_TIMEOUT", TimeSpan.FromSeconds(2.0));
 
-		// Allows the console to display symbols, emojis, and foreign characters
 		Console.OutputEncoding = Encoding.UTF8;
 		Console.InputEncoding = Encoding.UTF8;
 
@@ -57,22 +55,15 @@ public sealed class Startup : DisposableBase
 		AppDomain.CurrentDomain.UnhandledException += _unhandledExceptionHandler;
 		TaskScheduler.UnobservedTaskException += _unobservedTaskExceptionHandler;
 
-		// Configure FluentValidation to use JSON property names in validation error messages
-		// This ensures that validation error messages display the JSON property name (if available)
-		// rather than the C# property name, which is useful for API responses
+		// Report JSON property names in validation errors, as API clients see those rather than C# names.
 		ValidatorOptions.Global.DisplayNameResolver = (type, member, _) =>
 		{
-			// If no member is provided (validating the type itself), return the type name
 			if (member is null)
 			{
 				return type.Name;
 			}
 
-			// Check if the member has a JsonPropertyNameAttribute (from System.Text.Json)
-			JsonPropertyNameAttribute? propertyNameAttribute = member.GetCustomAttribute<JsonPropertyNameAttribute>();
-			string? jsonPropertyName = propertyNameAttribute?.Name;
-
-			// Return the JSON property name if available, otherwise fall back to the member name
+			string? jsonPropertyName = member.GetCustomAttribute<JsonPropertyNameAttribute>()?.Name;
 			return string.IsNullOrEmpty(jsonPropertyName) ? member.Name : jsonPropertyName;
 		};
 
@@ -81,13 +72,13 @@ public sealed class Startup : DisposableBase
 
 	private static void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
 	{
-		Log.Logger.Fatal($"CRITICAL ERROR: {e.ExceptionObject}");
+		Log.Logger.Fatal(e.ExceptionObject as Exception, "Unhandled exception: {ExceptionObject}", e.ExceptionObject);
 	}
 
 	private static void OnUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
 	{
 		Log.Logger.Error(e.Exception, "Background Task Error");
-		e.SetObserved(); // Prevents the process from crashing in older .NET versions
+		e.SetObserved();
 	}
 
 	private void Restore()
@@ -100,7 +91,7 @@ public sealed class Startup : DisposableBase
 
 		AppDomain.CurrentDomain.SetData("REGEX_DEFAULT_MATCH_TIMEOUT", _previousRegexTimeout);
 		CultureInfo.DefaultThreadCurrentCulture = _previousCulture;
-		CultureInfo.DefaultThreadCurrentUICulture = _previousUICulture;
+		CultureInfo.DefaultThreadCurrentUICulture = _previousUiCulture;
 		ValidatorOptions.Global.DisplayNameResolver = _previousDisplayNameResolver;
 
 		try

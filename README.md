@@ -14,7 +14,7 @@ Shared .NET libraries for [AI Empower Labs](https://github.com/AI-Empower-Labs) 
 - **Convention-based DI**: Register services via marker interfaces (`IScopedService`, `ITransientService`, `ISingletonService`)
 - **Background services**: Async hosted services, cron scheduling, and channel-based batch processing
 - **Extensions**: Extension methods for common .NET types (strings, tasks, channels, async enumerables, etc.)
-- **Disposables**: Composable disposable patterns (`DisposableBag`, `AsyncDisposableBase`, `AsyncCompletionScope`, etc.)
+- **Disposables**: Composable disposable patterns (`Defer`, `AsyncDefer`, `DisposableBase`, `AsyncDisposableBase`, `AsyncCompletionScope`)
 - **Serialization**: JSON converters and enum handling with `[EnumMember]` support
 - **Utilities**: Nanoid generation, continuous hashing, temp files, progress streams, file name sanitization
 

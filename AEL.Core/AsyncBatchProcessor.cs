@@ -7,27 +7,18 @@ using Microsoft.Extensions.Logging;
 namespace AEL.Core;
 
 /// <summary>
-/// Represents an asynchronous batch processor that processes input data in batches using
-/// a user-defined function and communicates the results back to individual callers.
-/// Usefull for processing large amounts of single items data that can be processed more
-/// effectively in batches, for example for GPU workloads like ML/AI inference, embeddings,
-/// external HTTP API's, rate limited services, image processing, search indexing, etc.
+/// Collects single items submitted through <c>Process</c> and hands them to <c>ExecuteBatchProcess</c>
+/// in batches, completing each caller's task when its batch finishes. Useful for workloads that are
+/// cheaper per batch, such as ML inference, embeddings, rate-limited HTTP APIs or search indexing.
 /// </summary>
-/// <typeparam name="TIn">The type of the input elements to be processed.</typeparam>
 public abstract class AsyncBatchProcessor<TIn> : AsyncBackgroundService
 {
 	private readonly int _batchSize;
 	private readonly ILogger _logger;
 
-	/// <summary>
-	/// Represents an unbounded channel used for asynchronous communication
-	/// between the producer and consumer within the <see cref="AsyncBatchProcessor{TIn, TOut}"/>.
-	/// </summary>
 	private readonly Channel<(TIn Value, TaskCompletionSource TaskCompletionSource)> _channel;
 
-	/// <summary>
-	/// Preferred constructor: async batch function with cancellation, bounded channel options.
-	/// </summary>
+	/// <param name="capacity">Maximum queued items; <c>null</c> for an unbounded queue.</param>
 	protected AsyncBatchProcessor(
 		int batchSize,
 		ILogger logger,
@@ -69,26 +60,16 @@ public abstract class AsyncBatchProcessor<TIn> : AsyncBackgroundService
 
 	protected abstract ValueTask ExecuteBatchProcess(ICollection<TIn> inputs, CancellationToken cancellationToken);
 
-	/// Processes a single input asynchronously, enqueues it for batch processing,
-	/// and returns a task that completes when the associated output is ready.
-	/// <param name="value">
-	/// The input value to be processed.
-	/// </param>
-	/// <param name="cancellationToken">
-	/// A cancellation token to observe while waiting for the task to complete. Defaults to none.
-	/// </param>
-	/// <returns>
-	/// A task that represents the asynchronous processing operation and contains the resulting output of the task.
-	/// </returns>
+	/// <summary>
+	/// Queues <paramref name="value"/> for the next batch and completes when that batch has been processed.
+	/// </summary>
 	protected async Task Process(TIn value, CancellationToken cancellationToken = default)
 	{
 		if (cancellationToken.IsCancellationRequested)
 		{
 			await Task.FromCanceled(cancellationToken).ConfigureAwait(false);
-			return;
 		}
 
-		// Link the caller's cancellation to the task completion
 		TaskCompletionSource tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
 		await using CancellationTokenRegistration tokenRegistration =
 			cancellationToken.Register(() => tcs.TrySetCanceled(cancellationToken));
@@ -102,7 +83,6 @@ public abstract class AsyncBatchProcessor<TIn> : AsyncBackgroundService
 		}
 		catch (ChannelClosedException)
 		{
-			// Extract original completion error if available
 			Exception? completionError = _channel.Reader.Completion.Exception;
 			tcs.TrySetException(completionError ?? new InvalidOperationException("Processor is completed."));
 		}
@@ -154,7 +134,7 @@ public abstract class AsyncBatchProcessor<TIn> : AsyncBackgroundService
 
 	private async Task ExecuteReadLoop(CancellationToken stoppingToken)
 	{
-		await using Defer defer = Disposables.Defer((_channel, stoppingToken), static state =>
+		await using Defer defer = Defer.Action((_channel, stoppingToken), static state =>
 		{
 			while (state._channel.Reader.TryRead(out (TIn Value, TaskCompletionSource TaskCompletionSource) item))
 			{

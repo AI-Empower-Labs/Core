@@ -10,7 +10,7 @@ public sealed class AsyncDisposableBaseTests
     private sealed class DerivedAsyncDisposable : AsyncDisposableBase
     {
         public CancellationToken Token => CancellationToken; // expose
-        public AsyncDisposableBag Bag => DisposableBag; // expose
+        public AsyncDefer Bag => DisposableBag; // expose
     }
 
     [Fact]

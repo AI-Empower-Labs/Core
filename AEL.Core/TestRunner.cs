@@ -31,7 +31,7 @@ public static class TestRunner
 		where THost : IHost
 		where THostApplicationBuilder : IHostApplicationBuilder
 	{
-		await using AsyncDefer rollback = Disposables.DeferAsync();
+		await using AsyncDefer rollback = new();
 		Startup startup = new();
 		rollback.Add(startup);
 

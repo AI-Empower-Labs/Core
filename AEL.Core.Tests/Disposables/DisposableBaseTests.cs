@@ -9,7 +9,7 @@ public sealed class DisposableBaseTests
     private sealed class DerivedDisposable : DisposableBase
     {
         public CancellationToken Token => CancellationToken; // expose
-        public DisposableBag Bag => DisposableBag; // expose
+        public Defer Bag => DisposableBag; // expose
     }
 
     [Fact]

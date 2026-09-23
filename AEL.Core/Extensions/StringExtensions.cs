@@ -20,48 +20,34 @@ public static class StringExtensions
 		}
 	}
 
-	/// <param name="text">The text to sanitize. Can be null.</param>
 	extension(string? text)
 	{
 		/// <summary>
-		/// Sanitizes the input text by removing control characters and normalizing line breaks.
+		/// Removes control characters, trims each line and drops empty lines. Lines are joined with <c>\n</c>.
 		/// </summary>
-		/// <returns>A sanitized string with control characters removed and consistent line breaks, or empty string if input is null/empty.</returns>
 		public string Sanitize()
 		{
-			// Return empty string if input is null or empty
 			if (string.IsNullOrEmpty(text))
 			{
 				return string.Empty;
 			}
 
-			// Use StringBuilder for efficient string concatenation
 			StringBuilder builder = new();
-
-			// Split text into lines, trimming whitespace and removing empty lines
-			string[] lines = text.Split(['\n', '\r'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-
-			// Process each line
-			foreach (string line in lines)
+			foreach (string line in text.Split(['\n', '\r'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
 			{
-				int initialLength = builder.Length;
-				// Filter out control characters (like tabs, carriage returns, etc.) and append valid characters
+				int lineStart = builder.Length;
 				foreach (char c in line.Where(c => !char.IsControl(c)))
 				{
 					builder.Append(c);
 				}
 
-				// Only append '\n' if we actually added characters for this line,
-				// and avoid more than one blank line (max two consecutive '\n')
-				if (builder.Length > initialLength && (builder.Length < 2 || builder[^1] != '\n' || builder[^2] != '\n'))
+				if (builder.Length > lineStart)
 				{
 					builder.Append('\n');
 				}
 			}
 
-			return builder.ToString().Trim('\n');
+			return builder.ToString().TrimEnd('\n');
 		}
 	}
-
-#pragma warning disable CS0168 // Variable is declared but never used
 }

@@ -17,9 +17,7 @@ public abstract class CronExecutionAsyncBackgroundService(
 	{
 		if (executeImmediately)
 		{
-			_logger.LogInformation("Service execution");
 			await ExecutePeriodicServiceTask();
-			_logger.LogInformation("Service execution finished");
 		}
 
 		DateTimeOffset? lastOccurence = null;
@@ -54,26 +52,23 @@ public abstract class CronExecutionAsyncBackgroundService(
 			lastOccurence = nextOccurence;
 
 			if (stoppingToken.IsCancellationRequested) break;
-			IDisposable? scope = _logger.BeginScope("Occurence: {Occurence}", nextOccurence);
-			await using Defer _ = Disposables.Defer(scope, static s => s?.Dispose());
-			_logger.LogInformation("Service execution");
+			using IDisposable? scope = _logger.BeginScope("Occurence: {Occurence}", nextOccurence);
 			await ExecutePeriodicServiceTask();
-			_logger.LogInformation("Service execution finished");
 		}
-
-		return;
 
 		async Task ExecutePeriodicServiceTask()
 		{
+			_logger.LogInformation("Service execution");
 			Stopwatch stopwatch = Stopwatch.StartNew();
-			await using Defer _ = Disposables.Defer((stopwatch, _logger), static state =>
+			try
 			{
-				state.stopwatch.Stop();
-				state._logger.LogInformation("Service execution took {Time}", state.stopwatch.Elapsed);
-			});
-
-			await Task.Run(() => ExecutePeriodically(stoppingToken)
-				.WithExceptionProtection(_logger, "Service execution failed!", cancellationToken: stoppingToken), stoppingToken);
+				await Task.Run(() => ExecutePeriodically(stoppingToken)
+					.WithExceptionProtection(_logger, "Service execution failed!", cancellationToken: stoppingToken), stoppingToken);
+			}
+			finally
+			{
+				_logger.LogInformation("Service execution finished in {Time}", stopwatch.Elapsed);
+			}
 		}
 	}
 

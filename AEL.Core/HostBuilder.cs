@@ -32,7 +32,7 @@ public static class HostBuilder
 
 		Log.Logger.Debug("Building host {HostType}", typeof(THost).Name);
 		THost application = build(builder);
-		await using AsyncDefer rollback = Disposables.DeferAsync(application, static async (app, _) =>
+		await using AsyncDefer rollback = AsyncDefer.Action(application, static async (app, _) =>
 		{
 			if (app is IAsyncDisposable asyncDisposable)
 			{

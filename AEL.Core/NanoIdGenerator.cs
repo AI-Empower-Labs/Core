@@ -272,12 +272,6 @@ public class CryptoRandom : Random
 	}
 
 	/// <inheritdoc />
-	/// <summary>
-	/// </summary>
-	/// <param name="minValue"></param>
-	/// <param name="maxValue"></param>
-	/// <returns></returns>
-	/// <exception cref="T:System.ArgumentOutOfRangeException"></exception>
 	public override int Next(int minValue, int maxValue)
 	{
 		if (minValue > maxValue) throw new ArgumentOutOfRangeException(nameof(minValue));
@@ -287,20 +281,12 @@ public class CryptoRandom : Random
 	}
 
 	/// <inheritdoc />
-	/// <summary>
-	/// </summary>
-	/// <returns></returns>
 	public override int Next()
 	{
 		return Next(0, int.MaxValue);
 	}
 
 	/// <inheritdoc />
-	/// <summary>
-	/// </summary>
-	/// <param name="maxValue"></param>
-	/// <returns></returns>
-	/// <exception cref="T:System.ArgumentOutOfRangeException"></exception>
 	public override int Next(int maxValue)
 	{
 		if (maxValue < 0) throw new ArgumentOutOfRangeException(nameof(maxValue));

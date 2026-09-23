@@ -51,7 +51,7 @@ public sealed class ProgressStreamTests
 		Assert.Equal(inputStream.Length, bytesReadOverall);
 		return;
 
-		void WriteProgress(int bytesRead)
+		void WriteProgress(long bytesRead)
 		{
 			bytesReadOverall += bytesRead;
 		}
@@ -110,7 +110,7 @@ public sealed class ProgressStreamTests
 		Assert.Equal(inputStream.Length, bytesReadOverall);
 		return;
 
-		void WriteProgress(int bytesRead)
+		void WriteProgress(long bytesRead)
 		{
 			bytesReadOverall = bytesRead;
 		}
@@ -143,7 +143,7 @@ public sealed class ProgressStreamTests
 		Assert.Equal(inputStream.Length, bytesReadOverall);
 		return;
 
-		void WriteProgress(int bytesRead)
+		void WriteProgress(long bytesRead)
 		{
 			bytesReadOverall = bytesRead;
 		}
@@ -206,7 +206,7 @@ public sealed class ProgressStreamTests
 		Assert.Equal(inputStream.Length, bytesReadOverall);
 		return;
 
-		void WriteProgress(int bytesRead)
+		void WriteProgress(long bytesRead)
 		{
 			bytesReadOverall += bytesRead;
 		}
@@ -239,7 +239,7 @@ public sealed class ProgressStreamTests
 		Assert.Equal(inputStream.Length, bytesReadOverall);
 		return;
 
-		void WriteProgress(int bytesRead)
+		void WriteProgress(long bytesRead)
 		{
 			bytesReadOverall += bytesRead;
 		}

@@ -48,11 +48,14 @@ public abstract partial class AsyncBackgroundService : AsyncDisposableBase, IHos
 			return;
 		}
 
-		await using AsyncDefer _ = Disposables.DeferAsync((this, _executingTask, cancellationToken), static async (state, _) =>
+		try
 		{
-			await state.Item1.ShutdownService(state._executingTask, state.cancellationToken);
-		});
-		await _stoppingCts.CancelAsync();
+			await _stoppingCts.CancelAsync();
+		}
+		finally
+		{
+			await ShutdownService(_executingTask, cancellationToken);
+		}
 	}
 
 	private Task ShutdownService(Task executingTask, CancellationToken cancellationToken)
@@ -73,7 +76,4 @@ public abstract partial class AsyncBackgroundService : AsyncDisposableBase, IHos
 
 	[LoggerMessage(LogLevel.Information, "Stopping")]
 	private static partial void LogStop(ILogger logger);
-
-	[LoggerMessage(LogLevel.Error, "Execution exception")]
-	private static partial void LogServiceException(ILogger logger, Exception exception);
 }

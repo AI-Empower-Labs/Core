@@ -20,7 +20,7 @@ public sealed class TempFileTests
 	{
 		string directory = Path.Combine(Path.GetTempPath(), "ael-tempfile-" + Guid.NewGuid().ToString("N"));
 		Directory.CreateDirectory(directory);
-		using Defer _ = System.Disposables.Defer(() =>
+		using Defer _ = System.Defer.Action(() =>
 		{
 			if (Directory.Exists(directory))
 			{

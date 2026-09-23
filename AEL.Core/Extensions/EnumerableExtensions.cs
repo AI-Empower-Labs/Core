@@ -19,9 +19,6 @@ public static class EnumerableExtensions
 		/// <summary>
 		/// Joins the elements in the sequence with the specified separator.
 		/// </summary>
-		/// <param name="left"></param>
-		/// <param name="separator"></param>
-		/// <returns></returns>
 		public static string operator *(IEnumerable<T> left, string separator) => string.Join(separator, left);
 
 		public async IAsyncEnumerable<TResult> ForEachParallel<TResult>(
@@ -36,7 +33,7 @@ public static class EnumerableExtensions
 			using SemaphoreSlim semaphore = new(maxDegreeOfParallelism);
 			using CancellationTokenSource tokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-			await using (Disposables.DeferAsync((tokenSource, queue), static async (state, token) =>
+			await using (AsyncDefer.Action((tokenSource, queue), static async (state, token) =>
 				{
 					await state.tokenSource.CancelAsync();
 					while (state.queue.Count > 0)
@@ -66,7 +63,7 @@ public static class EnumerableExtensions
 
 			async Task<TResult> RunSelector(T item, CancellationToken token, SemaphoreSlim concurrencyLimiter)
 			{
-				await using Defer _ = Disposables.Defer(concurrencyLimiter, static limiter =>
+				await using Defer _ = Defer.Action(concurrencyLimiter, static limiter =>
 				{
 					try
 					{
@@ -139,7 +136,7 @@ public static class EnumerableExtensions
 			using SemaphoreSlim semaphore = new(maxDegreeOfParallelism);
 			using CancellationTokenSource tokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-			await using (Disposables.DeferAsync((tokenSource, queue), static async (state, token) =>
+			await using (AsyncDefer.Action((tokenSource, queue), static async (state, token) =>
 				{
 					await state.tokenSource.CancelAsync();
 					while (state.queue.Count > 0)
@@ -169,7 +166,7 @@ public static class EnumerableExtensions
 
 			async Task<TResult?> RunSelector(T item, CancellationToken token, SemaphoreSlim concurrencyLimiter)
 			{
-				await using Defer _ = Disposables.Defer(concurrencyLimiter, static limiter =>
+				await using Defer _ = Defer.Action(concurrencyLimiter, static limiter =>
 				{
 					try
 					{
