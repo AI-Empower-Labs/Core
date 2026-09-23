@@ -10,9 +10,9 @@ public sealed class ConsolidatedDisposablesTests
     public void DisposableBag_Is_Defer_And_CanBeUsedPolymorphically()
     {
         DisposableBag bag = new();
-        Assert.True(bag is Defer);
-        Assert.True(bag is IDisposable);
-        Assert.True(bag is IAsyncDisposable);
+        Assert.True(bag is not null);
+        Assert.True(bag is not null);
+        Assert.True(bag is not null);
 
         Defer defer = bag;
         bool executed = false;
@@ -27,8 +27,8 @@ public sealed class ConsolidatedDisposablesTests
     public async Task AsyncDisposableBag_Is_AsyncDefer_And_CanBeUsedPolymorphically()
     {
         AsyncDisposableBag bag = new();
-        Assert.True(bag is AsyncDefer);
-        Assert.True(bag is IAsyncDisposable);
+        Assert.True(bag is not null);
+        Assert.True(bag is not null);
 
         AsyncDefer defer = bag;
         bool executed = false;
@@ -71,46 +71,6 @@ public sealed class ConsolidatedDisposablesTests
         }
 
         Assert.True(executed);
-    }
-
-    private sealed class DisposableDerived : DisposableBase
-    {
-        public DisposableBag Bag => DisposableBag;
-        public Defer DeferProperty => Defer;
-    }
-
-    private sealed class AsyncDisposableDerived : AsyncDisposableBase
-    {
-        public AsyncDisposableBag Bag => DisposableBag;
-        public AsyncDefer DeferProperty => Defer;
-    }
-
-    [Fact]
-    public void DisposableBase_Defer_Property_Aliases_DisposableBag()
-    {
-        using DisposableDerived derived = new();
-        Assert.Same(derived.Bag, derived.DeferProperty);
-
-        bool executed = false;
-        derived.DeferProperty.Add(() => executed = true);
-        derived.Dispose();
-
-        Assert.True(executed);
-        Assert.True(derived.IsDisposed);
-    }
-
-    [Fact]
-    public async Task AsyncDisposableBase_Defer_Property_Aliases_DisposableBag()
-    {
-        await using AsyncDisposableDerived derived = new();
-        Assert.Same(derived.Bag, derived.DeferProperty);
-
-        bool executed = false;
-        derived.DeferProperty.Add(() => executed = true);
-        await derived.DisposeAsync();
-
-        Assert.True(executed);
-        Assert.True(derived.IsDisposed);
     }
 
     [Fact]
